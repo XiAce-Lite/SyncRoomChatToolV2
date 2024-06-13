@@ -83,12 +83,9 @@ namespace SyncRoomChatToolV2
             string oldMessage = "";
             while(rootElement != null)
             {
+                //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
                 AutomationElement chatList = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                  new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
-
-                //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
-                AutomationElementCollection messages = chatList.FindAll(TreeScope.Element, new PropertyCondition(AutomationElement.AutomationIdProperty, "division"));
-
                 //TreeWalker遅いのかなぁ。凄ぇ重い。
                 TreeWalker twName = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "name"));
                 TreeWalker twTime = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "time"));

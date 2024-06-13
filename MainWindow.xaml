@@ -1,0 +1,187 @@
+﻿<Window
+    x:Class="SyncRoomChatToolV2.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:SyncRoomChatToolV2"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="SyncRoom読み上げちゃん V2"
+    Width="400"
+    Height="450"
+    Style="{StaticResource MaterialDesignWindow}"
+    mc:Ignorable="d">
+
+    <Window.Background>
+        <SolidColorBrush Color="{DynamicResource {x:Static SystemColors.ControlColorKey}}" />
+    </Window.Background>
+
+
+    <Grid>
+
+        <Grid>
+            <!--  パクリ元：https://qiita.com/rioLi0N/items/fa068a2db9c602168df1  -->
+            <!--  グリッドレイアウト定義  -->
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="2" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!--  GridSplitterを使ってパネルの移動が可能  -->
+
+
+            <Grid
+                x:Name="SplitGrid"
+                Grid.Row="0"
+                Margin="0,0,0,27"
+                Cursor="">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" />
+
+
+                <!--  上部左側の画面  -->
+                <Border Background="White">
+                    <!--  上部左側の画面のコンテンツをここに配置  -->
+
+
+                </Border>
+
+                <!--  上部右側の画面  -->
+                <Border Grid.Column="2" Background="White">
+                    <!--  上部右側の画面のコンテンツをここに配置  -->
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="2" />
+                            <RowDefinition Height="28" MinHeight="28" />
+                        </Grid.RowDefinitions>
+                        <TextBox
+                            x:Name="textBox"
+                            Grid.Row="2"
+                            Width="Auto"
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            Text="TextBox"
+                            TextWrapping="Wrap" />
+
+                    </Grid>
+
+                </Border>
+            </Grid>
+
+        </Grid>
+
+        <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsChecked, ElementName=MenuToggleButton}">
+            <materialDesign:DrawerHost.LeftDrawerContent>
+                <DockPanel MinWidth="220">
+                    <ToggleButton
+                        Margin="16"
+                        HorizontalAlignment="Right"
+                        DockPanel.Dock="Top"
+                        IsChecked="{Binding IsChecked, ElementName=MenuToggleButton, Mode=TwoWay}"
+                        Style="{StaticResource MaterialDesignHamburgerToggleButton}" />
+
+                    <VirtualizingStackPanel
+                        Margin="16,4"
+                        VirtualizingPanel.IsVirtualizing="true"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+
+                        <!--
+                        <Button
+                            x:Name="BtnNew"
+                            Margin="9,0,0,0"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource MaterialDesignFlatButton}">
+                            <DockPanel>
+                                <materialDesign:PackIcon Kind="FolderAdd" />
+                                <TextBlock Margin="10,0" Text="新規作成" />
+                            </DockPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="BtnOpen"
+                            Margin="9,0,0,0"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource MaterialDesignFlatButton}">
+                            <DockPanel>
+                                <materialDesign:PackIcon Kind="FolderOpen" />
+                                <TextBlock Margin="10,0" Text="ファイルを開く" />
+                            </DockPanel>
+                        </Button>
+                        -->
+
+                        <Button
+                            x:Name="BtnExit"
+                            Margin="0,0,0,0"
+                            HorizontalAlignment="Left"
+                            Click="BtnExit_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}">
+                            <DockPanel>
+                                <materialDesign:PackIcon VerticalAlignment="Center" Kind="ExitToApp" />
+                                <TextBlock
+                                    Margin="10,0"
+                                    VerticalAlignment="Center"
+                                    Text="終了" />
+                            </DockPanel>
+                        </Button>
+
+                    </VirtualizingStackPanel>
+                </DockPanel>
+            </materialDesign:DrawerHost.LeftDrawerContent>
+
+            <materialDesign:ColorZone
+                Padding="10,4,10,4"
+                VerticalAlignment="Top"
+                Mode="PrimaryDark">
+                <DockPanel>
+                    <VirtualizingStackPanel
+                        Orientation="Horizontal"
+                        VirtualizingPanel.IsVirtualizing="true"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ToggleButton
+                            x:Name="MenuToggleButton"
+                            Width="22"
+                            Height="22"
+                            AutomationProperties.Name="HamburgerToggleButton"
+                            Style="{DynamicResource MaterialDesignHamburgerToggleButton}" />
+                        <Button
+                            x:Name="StartButton"
+                            Margin="12,0,0,0"
+                            Padding="4,4,4,4"
+                            VerticalAlignment="Center"
+                            Click="StartButton_Click"
+                            Content="監視開始"
+                            FontSize="10" />
+                        <Button
+                            x:Name="StopButton"
+                            Margin="12,0,0,0"
+                            Padding="4,4,4,4"
+                            VerticalAlignment="Center"
+                            Click="StopButton_Click"
+                            Content="監視終了"
+                            FontSize="10" />
+                    </VirtualizingStackPanel>
+                </DockPanel>
+
+
+            </materialDesign:ColorZone>
+        </materialDesign:DrawerHost>
+        <StatusBar VerticalAlignment="Bottom">
+            <Label
+                x:Name="StatusMessage1"
+                HorizontalAlignment="Left"
+                Content="システムメッセージ。" />
+        </StatusBar>
+    </Grid>
+
+
+</Window>

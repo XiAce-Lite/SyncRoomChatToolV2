@@ -1,0 +1,18 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="SyncRoomChatToolV2.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="WindowLocation" Type="System.Drawing.Point" Scope="User">
+      <Value Profile="(Default)">10, 10</Value>
+    </Setting>
+    <Setting Name="WindowSize" Type="System.Drawing.Size" Scope="User">
+      <Value Profile="(Default)">400, 450</Value>
+    </Setting>
+    <Setting Name="GridRowWidthA" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">198</Value>
+    </Setting>
+    <Setting Name="GridRowWidthB" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">198</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

@@ -142,6 +142,9 @@ namespace SyncRoomChatToolV2
                         continue;
                     }
 
+                    AutomationElement studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                        new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
+
                     string oldMessage = "";
 
                     //TreeWalker遅いのかなぁ。凄ぇ重い。
@@ -150,7 +153,7 @@ namespace SyncRoomChatToolV2
                     TreeWalker twMessage = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "message"));
                     TreeWalker tw2 = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
 
-                    if (rootElement is not null)
+                    if (studio is not null)
                     {
                         while (true)
                         {
@@ -162,7 +165,7 @@ namespace SyncRoomChatToolV2
                             try
                             {
                                 //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
-                                AutomationElement chatList = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                AutomationElement chatList = studio.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
 
                                 AutomationElement elName = twName.GetLastChild(chatList);
@@ -185,7 +188,8 @@ namespace SyncRoomChatToolV2
 
                                 if ((elMessage.Current.Name != oldMessage)&&(!string.IsNullOrEmpty(oldMessage)))
                                 {
-                                    //Debug.WriteLine($"{chatLine}");
+                                    MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
+
                                     string newComment = elMessage.Current.Name;
                                     Match match;
                                     match = httpReg().Match(newComment);
@@ -211,8 +215,6 @@ namespace SyncRoomChatToolV2
                                         }
                                         LastURL = UriString;
                                     }
-
-                                    MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
 
                                     if (!string.IsNullOrEmpty(newComment))
                                     {

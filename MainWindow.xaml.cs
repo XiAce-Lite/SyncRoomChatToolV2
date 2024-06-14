@@ -81,6 +81,8 @@ namespace SyncRoomChatToolV2
 
             SplitGrid.ColumnDefinitions[0].Width = new GridLength(widthA, GridUnitType.Star);
             SplitGrid.ColumnDefinitions[2].Width = new GridLength(widthB, GridUnitType.Star);
+
+            _ = GetChat();
         }
 
         private void StartButton_Click(object sender, RoutedEventArgs e)

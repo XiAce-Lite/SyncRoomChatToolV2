@@ -24,15 +24,15 @@ namespace SyncRoomChatToolV2
             Settings.Default.Upgrade();
 
             InitializeComponent();
+
             ContentRendered += MainWindow_ContentRendered;
             Closing += MainWindow_Closing;
+
 #nullable disable warnings
             MainVM.Info.SysInfo = "起動中…";
             MainVM.Info.ChatLog = "チャットログが出る予定";
 #nullable restore
             DataContext = MainVM;
-
-            _ = GetChat();
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -54,8 +54,24 @@ namespace SyncRoomChatToolV2
         {
 
             //Windowロケーションとサイズの復元
-            Left = Settings.Default.WindowLocation.X;
-            Top = Settings.Default.WindowLocation.Y;
+            if (Settings.Default.WindowLocation.X > SystemParameters.WorkArea.Width)
+            {
+                Left = 10;
+            }
+            else
+            {
+                Left = Settings.Default.WindowLocation.X;
+            }
+
+            if (Settings.Default.WindowLocation.Y > SystemParameters.WorkArea.Height)
+            {
+                Top = 10; 
+            }
+            else
+            {
+                Top = Settings.Default.WindowLocation.Y;
+            }
+
             Width = Settings.Default.WindowSize.Width;
             Height = Settings.Default.WindowSize.Height;
 
@@ -65,6 +81,11 @@ namespace SyncRoomChatToolV2
 
             SplitGrid.ColumnDefinitions[0].Width = new GridLength(widthA, GridUnitType.Star);
             SplitGrid.ColumnDefinitions[2].Width = new GridLength(widthB, GridUnitType.Star);
+        }
+
+        private void StartButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ = GetChat();
         }
 
         private void BtnExit_Click(object sender, RoutedEventArgs e)
@@ -88,6 +109,8 @@ namespace SyncRoomChatToolV2
                 MainVM.Info.SysInfo = msg;
                 MainVM.Info.ChatLog = "";
 #nullable restore
+                await Task.Delay(1000);
+
                 if (targetProc.IsAlive)
                 {
                     msg = "SyncRoomが起動されています。";
@@ -117,9 +140,6 @@ namespace SyncRoomChatToolV2
                         continue;
                     }
 
-
-
-
                     string oldMessage = "";
 
                     //TreeWalker遅いのかなぁ。凄ぇ重い。
@@ -132,6 +152,9 @@ namespace SyncRoomChatToolV2
                     {
                         while (true)
                         {
+#nullable disable warnings
+                            MainVM.Info.SysInfo = msg;
+#nullable restore
                             await Task.Delay((int)Properties.Settings.Default.waitTiming);
 
                             try
@@ -158,7 +181,7 @@ namespace SyncRoomChatToolV2
                                 //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
                                 string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
 
-                                if (elMessage.Current.Name != oldMessage)
+                                if ((elMessage.Current.Name != oldMessage)&&(!string.IsNullOrEmpty(oldMessage)))
                                 {
                                     //Debug.WriteLine($"{chatLine}");
                                     string newComment = elMessage.Current.Name;
@@ -166,7 +189,7 @@ namespace SyncRoomChatToolV2
                                     match = httpReg().Match(newComment);
                                     if (match.Success)
                                     {
-                                        string UriString = newComment.Substring(match.Index);
+                                        string UriString = newComment[match.Index..];
                                         Uri u = new(UriString);
 
                                         if (Properties.Settings.Default.OpenLink)
@@ -187,7 +210,6 @@ namespace SyncRoomChatToolV2
                                         LastURL = UriString;
                                     }
 
-                                    oldMessage = elMessage.Current.Name;
                                     MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
 
                                     if (!string.IsNullOrEmpty(newComment))
@@ -195,6 +217,8 @@ namespace SyncRoomChatToolV2
                                         synth.Speak(newComment);
                                     }
                                 }
+                                oldMessage = elMessage.Current.Name;
+
                                 msg = "監視中…";
 #nullable disable warnings
                                 MainVM.Info.SysInfo = msg;
@@ -214,9 +238,8 @@ namespace SyncRoomChatToolV2
                 }
                 else
                 {
-                    msg = "SyncRoomが立ち上がってません。No Process.";
+                    msg = $"SyncRoomが立ち上がってません。No Process. {DateTime.Now}";
                 }
-                await Task.Delay(1000);
             }
         }
     }

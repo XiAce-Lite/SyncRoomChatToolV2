@@ -70,5 +70,29 @@ namespace SyncRoomChatToolV2.Properties {
                 this["GridRowWidthB"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("500")]
+        public decimal waitTiming {
+            get {
+                return ((decimal)(this["waitTiming"]));
+            }
+            set {
+                this["waitTiming"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool OpenLink {
+            get {
+                return ((bool)(this["OpenLink"]));
+            }
+            set {
+                this["OpenLink"] = value;
+            }
+        }
     }
 }

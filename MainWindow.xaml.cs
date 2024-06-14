@@ -1,7 +1,10 @@
-﻿using SyncRoomChatToolV2.Properties;
+﻿using SyncRoomChatToolV2.ModelView;
+using SyncRoomChatToolV2.Properties;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
+using System.Speech.Synthesis;
+using System.Text.RegularExpressions;
 
 namespace SyncRoomChatToolV2
 {
@@ -10,6 +13,10 @@ namespace SyncRoomChatToolV2
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly MainWindowViewModel MainVM = new();
+        [GeneratedRegex("https?://")]
+        private static partial Regex httpReg();
+        private static string LastURL = "";
 
         public MainWindow()
         {
@@ -19,6 +26,13 @@ namespace SyncRoomChatToolV2
             InitializeComponent();
             ContentRendered += MainWindow_ContentRendered;
             Closing += MainWindow_Closing;
+#nullable disable warnings
+            MainVM.Info.SysInfo = "起動中…";
+            MainVM.Info.ChatLog = "チャットログが出る予定";
+#nullable restore
+            DataContext = MainVM;
+
+            _ = GetChat();
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -58,92 +72,152 @@ namespace SyncRoomChatToolV2
             Application.Current.Shutdown();
         }
 
-        private void StartButton_Click(object sender, EventArgs e)
+        async Task GetChat()
         {
-            AutomationElement ?rootElement = null;
-            Process[] procs = GetProcessesByWindowTitle("SYNCROOM");
-            if (procs.Length == 0)
+            string msg = "";
+
+            SpeechSynthesizer synth = new ()
             {
-                //SyncRoomが立ち上がってません。
-                return;
-            }
-
-            foreach (Process proc in procs) { 
-                //v1系が同時起動だった場合はどうなるか分からんのだが。
-                if (proc.MainWindowTitle == "SYNCROOM") {
-                    //MainWindotTitle が "SYNCROOM"なプロセス＝ターゲットのプロセスは、SYNCROOM2.exeが中で作った別プロセスのようで
-                    //こんな面倒なやり方をしてみている。
-                    rootElement = AutomationElement.FromHandle(proc.MainWindowHandle);
-                    break; 
-                }
-            }
-
-            //ToDo: 入室中かどうかのチェック方法を探さないといけない。ID=chatListが存在しないかな？未入室の場合。
-
-            string oldMessage = "";
-            while(rootElement != null)
-            {
-                //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
-                AutomationElement chatList = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
-                                                                 new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
-                //TreeWalker遅いのかなぁ。凄ぇ重い。
-                TreeWalker twName = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "name"));
-                TreeWalker twTime = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "time"));
-                TreeWalker twMessage = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "message"));
-
-                AutomationElement elName = twName.GetLastChild(chatList);
-                TreeWalker tw2 = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
-                elName = tw2.GetLastChild(elName);
-
-                AutomationElement elTime = twTime.GetLastChild(chatList);
-                tw2 = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
-                elTime = tw2.GetLastChild(elTime);
-
-                AutomationElement elMessage = twMessage.GetLastChild(chatList);
-                tw2 = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
-                elMessage = tw2.GetLastChild(elMessage);
-
-                Task.Delay(100).Wait();
-                var timeStamp = DateTime.Now;
-                string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
-
-                if (chatLine != oldMessage) 
-                {
-                    Debug.WriteLine($"{chatLine} {timeStamp}");
-                    oldMessage = chatLine;
-                }
+                Rate = -1
             };
-        }
+            synth.SelectVoice("Microsoft Haruka Desktop");
 
-        private void StopButton_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        /// <summary>
-        /// 指定された文字列を含むウィンドウタイトルを持つプロセスを取得します。
-        /// </summary>
-        /// <param name="windowTitle">ウィンドウタイトルに含む文字列。</param>
-        /// <returns>該当するプロセスの配列。</returns>
-        public static System.Diagnostics.Process[] GetProcessesByWindowTitle(string windowTitle)
-        {
-            System.Collections.ArrayList list = new System.Collections.ArrayList();
-
-            //すべてのプロセスを列挙する
-            foreach (System.Diagnostics.Process p
-                in System.Diagnostics.Process.GetProcesses())
-            {
-                //指定された文字列がメインウィンドウのタイトルに含まれているか調べる
-                if (0 <= p.MainWindowTitle.IndexOf(windowTitle))
+            while (true) {
+                TargetProcess targetProc = new ("SYNCROOM2");
+#nullable disable warnings
+                MainVM.Info.SysInfo = msg;
+                MainVM.Info.ChatLog = "";
+#nullable restore
+                if (targetProc.IsAlive)
                 {
-                    //含まれていたら、コレクションに追加
-                    list.Add(p);
-                }
-            }
+                    msg = "SyncRoomが起動されています。";
 
-            //コレクションを配列にして返す
-            return (System.Diagnostics.Process[])
-                list.ToArray(typeof(System.Diagnostics.Process));
+                    AutomationElement? rootElement = null;
+                    Process[] procs = Tools.GetProcessesByWindowTitle("SYNCROOM");
+                    if (procs.Length == 0)
+                    {
+                        msg = "SyncRoomが立ち上がってません。No 'SYNCROOM' Title Window.";
+                        continue;
+                    }
+
+                    foreach (Process proc in procs)
+                    {
+                        if (proc.MainWindowTitle == "SYNCROOM")
+                        {
+                            //MainWindotTitle が "SYNCROOM"なプロセス＝ターゲットのプロセスは、SYNCROOM2.exeが中で作った別プロセスのようで
+                            //こんな面倒なやり方をしてみている。
+                            rootElement = AutomationElement.FromHandle(proc.MainWindowHandle);
+                            break;
+                        }
+                    }
+
+                    if (rootElement is null)
+                    {
+                        msg = "SyncRoomが立ち上がってません。Element Is Null.";
+                        continue;
+                    }
+
+
+
+
+                    string oldMessage = "";
+
+                    //TreeWalker遅いのかなぁ。凄ぇ重い。
+                    TreeWalker twName = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "name"));
+                    TreeWalker twTime = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "time"));
+                    TreeWalker twMessage = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "message"));
+                    TreeWalker tw2 = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
+
+                    if (rootElement is not null)
+                    {
+                        while (true)
+                        {
+                            await Task.Delay((int)Properties.Settings.Default.waitTiming);
+
+                            try
+                            {
+                                //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
+                                AutomationElement chatList = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                                    new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
+
+                                AutomationElement elName = twName.GetLastChild(chatList);
+                                if (elName is null)
+                                {
+                                    msg = "未入室あるいは未入力";
+                                    break;
+                                }
+
+                                elName = tw2.GetLastChild(elName);
+
+                                AutomationElement elTime = twTime.GetLastChild(chatList);
+                                elTime = tw2.GetLastChild(elTime);
+
+                                AutomationElement elMessage = twMessage.GetLastChild(chatList);
+                                elMessage = tw2.GetLastChild(elMessage);
+
+                                //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
+                                string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
+
+                                if (elMessage.Current.Name != oldMessage)
+                                {
+                                    //Debug.WriteLine($"{chatLine}");
+                                    string newComment = elMessage.Current.Name;
+                                    Match match;
+                                    match = httpReg().Match(newComment);
+                                    if (match.Success)
+                                    {
+                                        string UriString = newComment.Substring(match.Index);
+                                        Uri u = new(UriString);
+
+                                        if (Properties.Settings.Default.OpenLink)
+                                        {
+                                            if (UriString != LastURL)
+                                            {
+                                                if (u.IsAbsoluteUri)
+                                                {
+                                                    Tools.OpenUrl(UriString);
+                                                    newComment = "リンクが張られました";
+                                                }
+                                            }
+                                            else
+                                            {
+                                                newComment = "";
+                                            }
+                                        }
+                                        LastURL = UriString;
+                                    }
+
+                                    oldMessage = elMessage.Current.Name;
+                                    MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
+
+                                    if (!string.IsNullOrEmpty(newComment))
+                                    {
+                                        synth.Speak(newComment);
+                                    }
+                                }
+                                msg = "監視中…";
+#nullable disable warnings
+                                MainVM.Info.SysInfo = msg;
+#nullable restore
+                            }
+                            catch (Exception)
+                            {
+                                msg = "入室してください。";
+                                continue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        msg = "入室してください。";
+                    }
+                }
+                else
+                {
+                    msg = "SyncRoomが立ち上がってません。No Process.";
+                }
+                await Task.Delay(1000);
+            }
         }
     }
 }

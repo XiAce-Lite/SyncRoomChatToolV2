@@ -228,16 +228,16 @@ namespace SyncRoomChatToolV2
                                 MainVM.Info.SysInfo = msg;
 #nullable restore
                             }
-                            catch (Exception)
+                            catch (Exception e)
                             {
-                                msg = "入室してください。";
+                                msg = $"入室してください。{e.Message}";
                                 continue;
                             }
                         }
                     }
                     else
                     {
-                        msg = "入室してください。";
+                        msg = "入室してください。studio is null.";
                     }
                 }
                 else

@@ -55,24 +55,8 @@ namespace SyncRoomChatToolV2
         {
 
             //Windowロケーションとサイズの復元
-            if (Settings.Default.WindowLocation.X > SystemParameters.WorkArea.Width)
-            {
-                Left = 10;
-            }
-            else
-            {
-                Left = Settings.Default.WindowLocation.X;
-            }
-
-            if (Settings.Default.WindowLocation.Y > SystemParameters.WorkArea.Height)
-            {
-                Top = 10; 
-            }
-            else
-            {
-                Top = Settings.Default.WindowLocation.Y;
-            }
-
+            Left = Settings.Default.WindowLocation.X;
+            Top = Settings.Default.WindowLocation.Y;
             Width = Settings.Default.WindowSize.Width;
             Height = Settings.Default.WindowSize.Height;
 
@@ -86,11 +70,6 @@ namespace SyncRoomChatToolV2
             _ = GetChat();
         }
 
-        private void StartButton_Click(object sender, RoutedEventArgs e)
-        {
-            _ = GetChat();
-        }
-
         private void BtnExit_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
@@ -98,7 +77,7 @@ namespace SyncRoomChatToolV2
 
         async Task GetChat()
         {
-            string msg = "";
+            string msg = "監視を開始します…";
 
             SpeechSynthesizer synth = new ()
             {
@@ -120,6 +99,8 @@ namespace SyncRoomChatToolV2
                     msg = "SyncRoomが起動されています。";
 
                     AutomationElement? rootElement = null;
+
+                    //タイトル検索なので、他のプロセスでも"SYNCROOM"が入ってると…
                     Process[] procs = Tools.GetProcessesByWindowTitle("SYNCROOM");
                     if (procs.Length == 0)
                     {
@@ -144,6 +125,7 @@ namespace SyncRoomChatToolV2
                         continue;
                     }
 
+                    //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
                     AutomationElement studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                      new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
 
@@ -162,10 +144,38 @@ namespace SyncRoomChatToolV2
 
                     if (studio is not null)
                     {
+                        //部屋主をセットする。
+                        AutomationElement rack = twRack.GetFirstChild(studio);
+                        AutomationElement? roomOwner = null;
+                        if (rack is not null)
+                        {
+                            roomOwner = twDivision.GetFirstChild(rack);
+                            if (roomOwner is not null)
+                            {
+                                //名前と演奏パートの取得
+                                var tempName = twName.GetFirstChild(roomOwner);
+                                var tempPart = twPart.GetFirstChild(roomOwner);
+                                var tempNameText = twControl.GetFirstChild(tempName);
+                                var tempPartText = twControl.GetFirstChild(tempPart);
+
+                                Member item = new();
+                                if (tempNameText.Current.Name != null)
+                                {
+                                    item.MemberName = tempNameText.Current.Name;
+                                }
+                                if (tempPartText.Current.Name != null)
+                                {
+                                    item.MemberPart = tempPartText.Current.Name;
+                                }
+#nullable disable warnings
+                                MainVM.Members.Add(item);
+#nullable restore
+                            }
+                        }
+
                         //メインのループ。チャット取得用。
                         while (true)
                         {
-
                             MainVM.Info.SysInfo = msg;
                             //MainVM.Members.Clear();
 
@@ -173,41 +183,29 @@ namespace SyncRoomChatToolV2
 
                             try
                             {
-                                AutomationElement rack = twRack.GetFirstChild(studio);
-
-                                if (rack is not null)
+                                //メンバーの削除＆追加（毎回やる割には問題なさそう）
+                                if (roomOwner is not null)
                                 {
-                                    AutomationElement roomOwner = twDivision.GetFirstChild(rack);
-                                    var tempName = twName.GetFirstChild(roomOwner);
-                                    var tempPart = twPart.GetFirstChild(roomOwner);
-                                    var tempNameText = twControl.GetFirstChild(tempName);
-                                    var tempPartText = twControl.GetFirstChild(tempPart);
-
-                                    Member item = new();
-                                    if (tempNameText.Current.Name != null)
-                                    {
-                                        item.MemberName = tempNameText.Current.Name;
-                                    }
-                                    if (tempPartText.Current.Name != null)
-                                    {
-                                        item.MemberPart = tempPartText.Current.Name;
-                                    }
 #nullable disable warnings
-                                    MainVM.Members.Add(item);
-#nullable restore
                                     var roomMember = twDivision.GetNextSibling(roomOwner);
+
+                                    for (int i = (MainVM.Members.Count) - (1); i >= 1; i--)
+                                    {
+                                        MainVM.Members.RemoveAt(i);
+                                    }
+
                                     while (roomMember is not null)
                                     {
-                                        tempName = twName.GetFirstChild(roomMember);
-                                        tempPart = twPart.GetFirstChild(roomMember);
+                                        var tempName = twName.GetFirstChild(roomMember);
+                                        var tempPart = twPart.GetFirstChild(roomMember);
                                         if (tempName is null)
                                         {
                                             break;
                                         }
-                                        tempNameText = twControl.GetFirstChild(tempName);
-                                        tempPartText = twControl.GetFirstChild(tempPart);
+                                        var tempNameText = twControl.GetFirstChild(tempName);
+                                        var tempPartText = twControl.GetFirstChild(tempPart);
 
-                                        item = new();
+                                        Member item = new();
                                         if (tempNameText.Current.Name != null)
                                         {
                                             item.MemberName = tempNameText.Current.Name;
@@ -216,7 +214,9 @@ namespace SyncRoomChatToolV2
                                         {
                                             item.MemberPart = tempPartText.Current.Name;
                                         }
+
                                         MainVM.Members.Add(item);
+#nullable restore
                                         roomMember = twDivision.GetNextSibling(roomMember);
                                     }
                                 }

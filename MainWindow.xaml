@@ -116,7 +116,7 @@
                             Grid.Row="0"
                             VerticalContentAlignment="Bottom"
                             local:TextBoxBehaviors.AutoScrollToEnd="True"
-                            FontSize="14"
+                            FontSize="18"
                             IsReadOnly="True"
                             Text="{Binding Info.ChatLog, UpdateSourceTrigger=PropertyChanged}"
                             VerticalScrollBarVisibility="Auto" />

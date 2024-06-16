@@ -23,6 +23,7 @@
                     <TextBlock
                         x:Name="MemberName"
                         d:Text="hogehogehoge"
+                        FontWeight="Bold"
                         Text="{Binding MemberName}" />
                     <TextBlock
                         x:Name="MemberPart"

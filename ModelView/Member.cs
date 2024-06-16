@@ -52,5 +52,9 @@ namespace SyncRoomChatToolV2.ModelView
             if (null == Children) Children = [];
             Children.Add(child);
         }
+
+        public void Remove(Member child) {
+            Children?.Remove(child);
+        }
     }
 }

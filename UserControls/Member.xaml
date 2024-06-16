@@ -1,0 +1,38 @@
+﻿<UserControl
+    x:Class="SyncRoomChatToolV2.UserControls.MembersControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:SyncRoomChatToolV2.UserControls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:v2Model="clr-namespace:SyncRoomChatToolV2.ModelView"
+    d:DataContext="{d:DesignInstance Type=v2Model:Member}"
+    d:DesignHeight="34"
+    d:DesignWidth="140"
+    mc:Ignorable="d">
+    <Grid>
+        <VirtualizingStackPanel Orientation="Horizontal">
+            <VirtualizingStackPanel>
+                <Image
+                    Width="30"
+                    Height="30"
+                    Margin="0,2,0,0" />
+            </VirtualizingStackPanel>
+            <VirtualizingStackPanel>
+                <VirtualizingStackPanel Margin="2,0,0,0" Orientation="Vertical">
+                    <TextBlock
+                        x:Name="MemberName"
+                        d:Text="hogehogehoge"
+                        Text="{Binding MemberName}" />
+                    <TextBlock
+                        x:Name="MemberPart"
+                        Margin="3,2,0,0"
+                        VerticalAlignment="Center"
+                        d:Text="Guitar"
+                        FontSize="10"
+                        Text="{Binding MemberPart}" />
+                </VirtualizingStackPanel>
+            </VirtualizingStackPanel>
+        </VirtualizingStackPanel>
+    </Grid>
+</UserControl>

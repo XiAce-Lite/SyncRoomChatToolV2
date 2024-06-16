@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
+using System.Windows.Controls;
 
 namespace SyncRoomChatToolV2
 {
@@ -105,12 +106,13 @@ namespace SyncRoomChatToolV2
             };
             synth.SelectVoice("Microsoft Haruka Desktop");
 
+            //外のループ。プロセス確認用。
             while (true) {
                 TargetProcess targetProc = new ("SYNCROOM2");
-#nullable disable warnings
+
                 MainVM.Info.SysInfo = msg;
                 MainVM.Info.ChatLog = "";
-#nullable restore
+
                 await Task.Delay(1000);
 
                 if (targetProc.IsAlive)
@@ -138,32 +140,91 @@ namespace SyncRoomChatToolV2
 
                     if (rootElement is null)
                     {
-                        msg = "SyncRoomが立ち上がってません。Element Is Null.";
+                        msg = "SyncRoomが立ち上がってません。RootElement Is Null.";
                         continue;
                     }
 
                     AutomationElement studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
-                                                                        new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
+                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
 
                     string oldMessage = "";
 
-                    //TreeWalker遅いのかなぁ。凄ぇ重い。
                     TreeWalker twName = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "name"));
                     TreeWalker twTime = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "time"));
                     TreeWalker twMessage = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "message"));
-                    TreeWalker tw2 = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
+                    TreeWalker twPart = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "part"));
+                    TreeWalker twRack = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "rack"));
+                    TreeWalker twDivision = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "division"));
+
+                    TreeWalker twControl = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
+
+                    MainVM.Members?.Clear();
 
                     if (studio is not null)
                     {
+                        //メインのループ。チャット取得用。
                         while (true)
                         {
-#nullable disable warnings
+
                             MainVM.Info.SysInfo = msg;
-#nullable restore
+                            //MainVM.Members.Clear();
+
                             await Task.Delay((int)Properties.Settings.Default.waitTiming);
 
                             try
                             {
+                                AutomationElement rack = twRack.GetFirstChild(studio);
+
+                                if (rack is not null)
+                                {
+                                    AutomationElement roomOwner = twDivision.GetFirstChild(rack);
+                                    var tempName = twName.GetFirstChild(roomOwner);
+                                    var tempPart = twPart.GetFirstChild(roomOwner);
+                                    var tempNameText = twControl.GetFirstChild(tempName);
+                                    var tempPartText = twControl.GetFirstChild(tempPart);
+
+                                    Member item = new();
+                                    if (tempNameText.Current.Name != null)
+                                    {
+                                        item.MemberName = tempNameText.Current.Name;
+                                    }
+                                    if (tempPartText.Current.Name != null)
+                                    {
+                                        item.MemberPart = tempPartText.Current.Name;
+                                    }
+#nullable disable warnings
+                                    MainVM.Members.Add(item);
+#nullable restore
+                                    var roomMember = twDivision.GetNextSibling(roomOwner);
+                                    while (roomMember is not null)
+                                    {
+                                        tempName = twName.GetFirstChild(roomMember);
+                                        tempPart = twPart.GetFirstChild(roomMember);
+                                        if (tempName is null)
+                                        {
+                                            break;
+                                        }
+                                        tempNameText = twControl.GetFirstChild(tempName);
+                                        tempPartText = twControl.GetFirstChild(tempPart);
+
+                                        item = new();
+                                        if (tempNameText.Current.Name != null)
+                                        {
+                                            item.MemberName = tempNameText.Current.Name;
+                                        }
+                                        if (tempPartText.Current.Name != null)
+                                        {
+                                            item.MemberPart = tempPartText.Current.Name;
+                                        }
+                                        MainVM.Members.Add(item);
+                                        roomMember = twDivision.GetNextSibling(roomMember);
+                                    }
+                                }
+                                else
+                                {
+                                    break;
+                                }
+
                                 //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
                                 AutomationElement chatList = studio.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
@@ -171,17 +232,17 @@ namespace SyncRoomChatToolV2
                                 AutomationElement elName = twName.GetLastChild(chatList);
                                 if (elName is null)
                                 {
-                                    msg = "未入室あるいは未入力";
-                                    break;
+                                    msg = "チャット入力待ち";
+                                    continue;
                                 }
 
-                                elName = tw2.GetLastChild(elName);
+                                elName = twControl.GetLastChild(elName);
 
                                 AutomationElement elTime = twTime.GetLastChild(chatList);
-                                elTime = tw2.GetLastChild(elTime);
+                                elTime = twControl.GetLastChild(elTime);
 
                                 AutomationElement elMessage = twMessage.GetLastChild(chatList);
-                                elMessage = tw2.GetLastChild(elMessage);
+                                elMessage = twControl.GetLastChild(elMessage);
 
                                 //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
                                 string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
@@ -224,13 +285,13 @@ namespace SyncRoomChatToolV2
                                 oldMessage = elMessage.Current.Name;
 
                                 msg = "監視中…";
-#nullable disable warnings
+
                                 MainVM.Info.SysInfo = msg;
-#nullable restore
+
                             }
                             catch (Exception e)
                             {
-                                msg = $"入室してください。{e.Message}";
+                                msg = $"多分チャットウィンドウが見えてません。{e.Message}";
                                 continue;
                             }
                         }

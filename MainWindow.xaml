@@ -7,6 +7,8 @@
     xmlns:local="clr-namespace:SyncRoomChatToolV2"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:view="clr-namespace:SyncRoomChatToolV2.UserControls"
+    xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
     Title="SyncRoom読み上げちゃん V2"
     Width="400"
     Height="450"
@@ -20,7 +22,6 @@
     <Window.Background>
         <SolidColorBrush Color="{DynamicResource {x:Static SystemColors.ControlColorKey}}" />
     </Window.Background>
-
 
     <Grid>
 
@@ -53,14 +54,55 @@
 
 
                 <!--  上部左側の画面  -->
-                <Border Background="White">
+                <Border Margin="0,31,0,0" Background="White">
                     <!--  上部左側の画面のコンテンツをここに配置  -->
+                    <ListView
+                        d:ItemsSource="{d:SampleData ItemCount=120}"
+                        ItemsSource="{Binding Members}"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.IsDeferredScrollingEnabled="True"
+                        SelectionMode="Single"
+                        VirtualizingPanel.IsVirtualizing="True"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <vwp:VirtualizingWrapPanel
+                                    Orientation="Vertical"
+                                    StretchItems="True"
+                                    VirtualizingPanel.IsVirtualizing="True"
+                                    VirtualizingPanel.VirtualizationMode="Recycling" />
 
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
 
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <!--  内容更新時のバインドエラー回避のおまじない。  -->
+                                <Setter Property="HorizontalAlignment" Value="Left" />
+                                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <VirtualizingStackPanel
+                                    Height="Auto"
+                                    Orientation="Vertical"
+                                    ScrollViewer.IsDeferredScrollingEnabled="true"
+                                    VirtualizingPanel.IsVirtualizing="True"
+                                    VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <view:MembersControl />
+                                </VirtualizingStackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
                 </Border>
 
                 <!--  上部右側の画面  -->
-                <Border Grid.Column="2" Background="White">
+                <Border
+                    Grid.Column="2"
+                    Margin="0,31,0,0"
+                    Background="White">
                     <!--  上部右側の画面のコンテンツをここに配置  -->
 
                     <Grid>
@@ -72,7 +114,6 @@
                         <TextBox
                             x:Name="chatLog"
                             Grid.Row="0"
-                            Margin="0,31,0,0"
                             VerticalContentAlignment="Bottom"
                             local:TextBoxBehaviors.AutoScrollToEnd="True"
                             FontSize="14"

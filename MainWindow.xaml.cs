@@ -718,36 +718,35 @@ namespace SyncRoomChatToolV2
 
                                     if (Settings.Default.CanSpeech)
                                     {
-                                        if (!IsLink)
+                                        if (IsLink)
                                         {
-                                            if (!string.IsNullOrEmpty(Message))
-                                            {
-                                                //await SpeechMessage(elName.Current.Name, Message);
-                                                _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
-                                            }
-                                        }
-                                        else
-                                        {
+                                            oldMessage = elMessage.Current.Name;
+                                            msg = "リンクが張られました。";
+
                                             //リンク固定ファイル再生時
                                             if (!string.IsNullOrEmpty(Settings.Default.LinkWaveFilePath))
                                             {
-                                                if (System.IO.Path.Exists(Settings.Default.LinkWaveFilePath))
+                                                if (Path.Exists(Settings.Default.LinkWaveFilePath))
                                                 {
                                                     var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
                                                     var waveOut = new WaveOut();
                                                     waveOut.Init(waveReader);
                                                     waveOut.Play();
+                                                    continue;
                                                 }
                                             }
+                                        }
+                                        if (!string.IsNullOrEmpty(Message))
+                                        {
+                                            //await SpeechMessage(elName.Current.Name, Message);
+                                            _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
                                         }
                                     }
                                 }
                                 oldMessage = elMessage.Current.Name;
 
                                 msg = "監視中…";
-
                                 MainVM.Info.SysInfo = msg;
-
                             }
                             catch (Exception e)
                             {

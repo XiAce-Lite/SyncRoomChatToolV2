@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System.Windows;
+using SyncRoomChatToolV2.Properties;
 
 namespace SyncRoomChatToolV2.View
 {
@@ -16,7 +17,10 @@ namespace SyncRoomChatToolV2.View
 
         private void SettingsWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            Properties.Settings.Default.Save();
+            Settings.Default.LinkWaveFilePath = LinkWaveFilePath.Text;
+            Settings.Default.VoiceVoxPath = VoiceVoxPath.Text;
+            Settings.Default.VoiceVoxAddress = VoiceVoxAddress.Text;
+            Settings.Default.Save();
         }
 
         private void BtnReturn_Click(object sender, RoutedEventArgs e)
@@ -39,6 +43,8 @@ namespace SyncRoomChatToolV2.View
             if (result == true)
             {
                 LinkWaveFilePath.Text = ofd.FileName;
+                Settings.Default.LinkWaveFilePath = LinkWaveFilePath.Text;
+                Settings.Default.Save();
             }
         }
 
@@ -57,6 +63,8 @@ namespace SyncRoomChatToolV2.View
             if (result == true)
             {
                 VoiceVoxPath.Text = ofd.FileName;
+                Settings.Default.VoiceVoxPath = VoiceVoxPath.Text;
+                Settings.Default.Save();
             }
         }
     }

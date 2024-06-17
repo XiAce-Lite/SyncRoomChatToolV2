@@ -10,10 +10,7 @@ using NAudio.Wave;
 using Newtonsoft.Json;
 using SyncRoomChatToolV2.View;
 using System.Net;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Xml.Linq;
-using Newtonsoft.Json.Linq;
 
 namespace SyncRoomChatToolV2
 {
@@ -38,7 +35,7 @@ namespace SyncRoomChatToolV2
         private static partial Regex styleReg();
         [GeneratedRegex(@"\d{1,2}")]
         private static partial Regex numReg();
-        [GeneratedRegex(@"^/p",RegexOptions.IgnoreCase)]
+        [GeneratedRegex(@"^/p", RegexOptions.IgnoreCase)]
         private static partial Regex speedReg();
         [GeneratedRegex(@"^[[0-9]+[.]?[0-9]{1,1}|[0-9]+]")]
         private static partial Regex num2Reg();
@@ -66,7 +63,7 @@ namespace SyncRoomChatToolV2
         private static readonly List<Speaker> UserTable = [];
         private static readonly List<Speaker> StyleDef = [];
         private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
-        
+
         private static void UpdateUserOption(bool existsFlg, string UserName, int StyleId, bool ChatFlg, bool SpeechFlg, double SpeedScale)
         {
             if (existsFlg)
@@ -223,6 +220,7 @@ namespace SyncRoomChatToolV2
                 UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, !SpeechFlg, SpeedScale);
             }
 
+            /*
             //行頭コマンドチェック。/c はチャイムのトグル
             match = chimeReg().Match(Message);
             if (match.Success)
@@ -230,6 +228,7 @@ namespace SyncRoomChatToolV2
                 Message = Message.Replace(match.ToString(), "");
                 UpdateUserOption(existsFlg, UserName, StyleId, !ChimeFlg, SpeechFlg, SpeedScale);
             }
+            */
 
             //UserTableから、StyleIdその他の取り出し。
             foreach (var item in UserTable.Where(x => x.UserName == UserName))
@@ -239,6 +238,9 @@ namespace SyncRoomChatToolV2
                 SpeechFlg = item.SpeechFlg;
                 break;
             }
+
+            //スピーチフラグチェック。スピーチしない＝抜ける
+            if (SpeechFlg == false) { return; }
 
             //名前にツイキャスユーザが入っている場合。
             if (twiCasUserReg().Match(Message).Success) { StyleId = 8; }
@@ -470,17 +472,17 @@ namespace SyncRoomChatToolV2
                     }
                 }
 #nullable restore
-                /* autoCompListが使えるかも分からんし、一旦コメントアウト
+                /* autoCompListが使えるかも分からんし、一旦コメントアウト */
                 VoiceLists.Sort((a, b) => a.StyleId - b.StyleId);
                 foreach (Speaker st in VoiceLists)
                 {
                     // 候補リストに項目を追加（初期設定）
-                    autoCompList.Add($"/{st.StyleId} {st.UserName} にボイス変更");
+                    ChatInputCombo.Items.Add($"/{st.StyleId} {st.UserName} にボイス変更");
                 }
-                autoCompList.Add("/p0.4 最小スピード");
-                autoCompList.Add("/p1.0 標準スピード");
-                autoCompList.Add("/p1.8 最大スピード");
-                */
+                ChatInputCombo.Items.Add("/p0.4 最小スピード");
+                ChatInputCombo.Items.Add("/p1.0 標準スピード");
+                ChatInputCombo.Items.Add("/p1.8 最大スピード");
+                ChatInputCombo.Items.Add("/s スピーチのトグル");
             }
 
             ContentRendered += MainWindow_ContentRendered;
@@ -535,8 +537,9 @@ namespace SyncRoomChatToolV2
             string msg = "チャット監視を開始します…";
 
             //外のループ。プロセス確認用。
-            while (true) {
-                TargetProcess targetProc = new ("SYNCROOM2");
+            while (true)
+            {
+                TargetProcess targetProc = new("SYNCROOM2");
 
                 MainVM.Info.SysInfo = msg;
                 MainVM.Info.ChatLog = "";
@@ -695,7 +698,7 @@ namespace SyncRoomChatToolV2
                                 string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
 
                                 //初回取りこぼし or 最後のメッセージ読んじゃう、どっちがいいかしらねぇ。
-                                if ((elMessage.Current.Name != oldMessage)&&(!string.IsNullOrEmpty(oldMessage)))
+                                if ((elMessage.Current.Name != oldMessage) && (!string.IsNullOrEmpty(oldMessage)))
                                 {
                                     MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
 
@@ -786,9 +789,8 @@ namespace SyncRoomChatToolV2
             settingsWindow.ShowDialog();
         }
 
-        private void ChatInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void ChatInputCombo_KeyDown(object sender, KeyEventArgs e)
         {
-            /*
             if (studio is null) { return; }
 
             TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
@@ -796,7 +798,10 @@ namespace SyncRoomChatToolV2
             if (chat is null) { return; }
 
             TreeWalker twEdit = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
-            AutomationElement EditBox = twEdit.GetLastChild(chat);
+            AutomationElement EditBox1 = twEdit.GetFirstChild(chat);
+            if (EditBox1 is null) { return; }
+            AutomationElement EditBox2 = twEdit.GetFirstChild(EditBox1);
+            if (EditBox2 is null) { return; }
 
             TreeWalker twButton = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
             AutomationElement EditButton = twButton.GetLastChild(chat);
@@ -804,20 +809,18 @@ namespace SyncRoomChatToolV2
 
             if (e.Key == Key.Return)
             {
-                Debug.WriteLine($"{ChatInput.Text}");
-
-                if (EditBox.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePattern))
+                if (EditBox2.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePattern))
                 {
-                    ((ValuePattern)valuePattern).SetValue(ChatInput.Text);
+                    ((ValuePattern)valuePattern).SetValue(ChatInputCombo.Text);
                 }
 
                 if (EditButton.GetCurrentPattern(InvokePattern.Pattern) is InvokePattern btn)
                 {
                     btn.Invoke();
                 }
-                ChatInput.Text = "";
+                ChatInputCombo.Text = "";
+                this.Activate();
             }
-            */
         }
     }
 }

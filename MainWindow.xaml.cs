@@ -10,6 +10,10 @@ using NAudio.Wave;
 using Newtonsoft.Json;
 using SyncRoomChatToolV2.View;
 using System.Net;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Xml.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace SyncRoomChatToolV2
 {
@@ -19,6 +23,10 @@ namespace SyncRoomChatToolV2
     public partial class MainWindow : Window
     {
         private readonly MainWindowViewModel MainVM = new();
+
+        //ルートエレメントとStudioエレメントのスコープを上げてみる。
+        AutomationElement? rootElement = null;
+        AutomationElement? studio = null;
 
         [GeneratedRegex("https?://")]
         private static partial Regex httpReg();
@@ -330,12 +338,11 @@ namespace SyncRoomChatToolV2
                     var waveOut = new WaveOut();
                     waveOut.Init(waveReader);
                     waveOut.Play();
-                    /*
+
                     while (waveOut.PlaybackState == PlaybackState.Playing)
                     {
-                        await Task.Delay(50);
+                        Task.Delay(50);
                     }
-                    */
                 }
             }
         }
@@ -540,8 +547,6 @@ namespace SyncRoomChatToolV2
                 {
                     msg = "SyncRoomが起動されています。";
 
-                    AutomationElement? rootElement = null;
-
                     //タイトル検索なので、他のプロセスでも"SYNCROOM"が入ってると…
                     Process[] procs = Tools.GetProcessesByWindowTitle("SYNCROOM");
                     if (procs.Length == 0)
@@ -568,7 +573,7 @@ namespace SyncRoomChatToolV2
                     }
 
                     //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
-                    AutomationElement studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                    studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                      new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
 
                     string oldMessage = "";
@@ -614,6 +619,10 @@ namespace SyncRoomChatToolV2
 #nullable restore
                             }
                         }
+
+                        TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
+                        AutomationElement chat = twChat.GetFirstChild(studio);
+                        if (chat is null) { continue; }
 
                         //メインのループ。チャット取得用。
                         while (true)
@@ -664,7 +673,7 @@ namespace SyncRoomChatToolV2
                                 }
 
                                 //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
-                                AutomationElement chatList = studio.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                AutomationElement chatList = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
 
                                 AutomationElement elName = twName.GetLastChild(chatList);
@@ -732,6 +741,10 @@ namespace SyncRoomChatToolV2
                                                     var waveOut = new WaveOut();
                                                     waveOut.Init(waveReader);
                                                     waveOut.Play();
+                                                    while (waveOut.PlaybackState == PlaybackState.Playing)
+                                                    {
+                                                        await Task.Delay(50);
+                                                    }
                                                     continue;
                                                 }
                                             }
@@ -771,6 +784,40 @@ namespace SyncRoomChatToolV2
         {
             var settingsWindow = new SettingsWindow();
             settingsWindow.ShowDialog();
+        }
+
+        private void ChatInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            /*
+            if (studio is null) { return; }
+
+            TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
+            AutomationElement chat = twChat.GetFirstChild(studio);
+            if (chat is null) { return; }
+
+            TreeWalker twEdit = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
+            AutomationElement EditBox = twEdit.GetLastChild(chat);
+
+            TreeWalker twButton = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
+            AutomationElement EditButton = twButton.GetLastChild(chat);
+
+
+            if (e.Key == Key.Return)
+            {
+                Debug.WriteLine($"{ChatInput.Text}");
+
+                if (EditBox.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePattern))
+                {
+                    ((ValuePattern)valuePattern).SetValue(ChatInput.Text);
+                }
+
+                if (EditButton.GetCurrentPattern(InvokePattern.Pattern) is InvokePattern btn)
+                {
+                    btn.Invoke();
+                }
+                ChatInput.Text = "";
+            }
+            */
         }
     }
 }

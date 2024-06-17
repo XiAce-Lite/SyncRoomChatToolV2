@@ -11,6 +11,10 @@ using Newtonsoft.Json;
 using SyncRoomChatToolV2.View;
 using System.Net;
 using System.Windows.Input;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Windows.Media.Media3D;
+using System.Windows.Media.Imaging;
 
 namespace SyncRoomChatToolV2
 {
@@ -587,8 +591,10 @@ namespace SyncRoomChatToolV2
                     TreeWalker twPart = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "part"));
                     TreeWalker twRack = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "rack"));
                     TreeWalker twDivision = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "division"));
+                    TreeWalker twAvatar = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "avatar"));
 
                     TreeWalker twControl = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
+                    TreeWalker twImage = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Image));
 
                     MainVM.Members?.Clear();
 
@@ -604,9 +610,17 @@ namespace SyncRoomChatToolV2
                             {
                                 //名前と演奏パートの取得
                                 var tempName = twName.GetFirstChild(yourSelf);
-                                var tempPart = twPart.GetFirstChild(yourSelf);
+                                if (tempName is null) { break; }
                                 var tempNameText = twControl.GetFirstChild(tempName);
+
+                                var tempPart = twPart.GetFirstChild(yourSelf);
+                                if (tempPart is null) { break; }
                                 var tempPartText = twControl.GetFirstChild(tempPart);
+
+                                var tempAvatar = twAvatar.GetFirstChild(yourSelf);
+                                if (tempAvatar is null) { break; }
+                                var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
+
 
                                 Member item = new();
                                 if (tempNameText.Current.Name != null)
@@ -617,6 +631,31 @@ namespace SyncRoomChatToolV2
                                 {
                                     item.MemberPart = tempPartText.Current.Name;
                                 }
+
+                                //todo: rect 指定次第で、キャプチャ取れるか？
+                                //todo: ファイルにするのは馬鹿らしいので、何とかソースで。
+                                var rect = tempAvatarImage.Current.BoundingRectangle;
+
+                                // Set the bitmap object to the size of the screen
+                                var bmpScreenshot = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
+
+                                // Create a graphics object from the bitmap
+                                var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
+
+                                // Take the screenshot from the upper left corner to the right bottom corner
+                                gfxScreenshot.CopyFromScreen((int)rect.Left, (int)rect.Top, 0, 0,
+                                                                 new System.Drawing.Size((int)rect.Width, (int)rect.Height), CopyPixelOperation.SourceCopy);
+
+                                var buffer = new byte[bmpScreenshot.Size.Height * bmpScreenshot.Size.Width * 4];
+                                var stream = new MemoryStream(buffer);
+
+                                bmpScreenshot.Save(stream, ImageFormat.Png);
+                                bmpScreenshot.Save("f:temp/temp.png");
+                                stream.Seek(0, SeekOrigin.Begin);
+                                item.MemberImage = new System.Windows.Controls.Image();
+                                item.MemberImage.Source = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+
+
 #nullable disable warnings
                                 MainVM.Members.Add(item);
 #nullable restore

@@ -7,12 +7,14 @@
     xmlns:local="clr-namespace:SyncRoomChatToolV2"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:prop="clr-namespace:SyncRoomChatToolV2.Properties"
     xmlns:view="clr-namespace:SyncRoomChatToolV2.UserControls"
     xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
     Title="SyncRoom読み上げちゃん V2"
     Width="400"
     Height="450"
     Style="{StaticResource MaterialDesignWindow}"
+    Topmost="{Binding WindowTopMost, Source={x:Static prop:Settings.Default}}"
     mc:Ignorable="d">
 
     <Window.DataContext>
@@ -147,21 +149,73 @@
 
                     <VirtualizingStackPanel
                         Margin="16,4"
+                        Cursor=""
                         VirtualizingPanel.IsVirtualizing="true"
                         VirtualizingPanel.VirtualizationMode="Recycling">
 
-                        <!--
+                        <StackPanel
+                            Margin="15,0,0,0"
+                            Cursor=""
+                            Orientation="Horizontal">
+                            <CheckBox
+                                Padding="9"
+                                Content="最前面固定"
+                                FontWeight="DemiBold"
+                                Foreground="#FF3F51B5"
+                                IsChecked="{Binding WindowTopMost, Mode=TwoWay, Source={x:Static prop:Settings.Default}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
+                        <StackPanel
+                            Margin="15,0,0,0"
+                            Cursor=""
+                            Orientation="Horizontal">
+                            <CheckBox
+                                Padding="9"
+                                Content="リンク自動オープン"
+                                FontWeight="DemiBold"
+                                Foreground="#FF3F51B5"
+                                IsChecked="{Binding OpenLink, Mode=TwoWay, Source={x:Static prop:Settings.Default}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
+                        <StackPanel
+                            Margin="15,0,0,0"
+                            Cursor=""
+                            Orientation="Horizontal">
+                            <CheckBox
+                                Padding="9"
+                                Content="スピーチさせる"
+                                FontWeight="DemiBold"
+                                Foreground="#FF3F51B5"
+                                IsChecked="{Binding CanSpeech, Mode=TwoWay, Source={x:Static prop:Settings.Default}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
+                        <StackPanel
+                            Margin="15,0,0,0"
+                            Cursor=""
+                            Orientation="Horizontal">
+                            <CheckBox
+                                Padding="9"
+                                Content="VOICEVOXを使う"
+                                FontWeight="DemiBold"
+                                Foreground="#FF3F51B5"
+                                IsChecked="{Binding UseVoiceVox, Mode=TwoWay, Source={x:Static prop:Settings.Default}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
                         <Button
-                            x:Name="BtnNew"
-                            Margin="9,0,0,0"
+                            x:Name="BtnSettings"
+                            Margin="0,0,0,0"
                             HorizontalAlignment="Left"
+                            Click="BtnSettings_Click"
                             Style="{StaticResource MaterialDesignFlatButton}">
                             <DockPanel>
-                                <materialDesign:PackIcon Kind="FolderAdd" />
-                                <TextBlock Margin="10,0" Text="新規作成" />
+                                <materialDesign:PackIcon Kind="Toolbox" />
+                                <TextBlock
+                                    Margin="10,0"
+                                    Cursor=""
+                                    Text="設定" />
                             </DockPanel>
                         </Button>
-
+                        <!--
                         <Button
                             x:Name="BtnOpen"
                             Margin="9,0,0,0"
@@ -230,7 +284,7 @@
 
             </materialDesign:ColorZone>
         </materialDesign:DrawerHost>
-        <StatusBar VerticalAlignment="Bottom">
+        <StatusBar Margin="1,1,1,1" VerticalAlignment="Bottom">
             <TextBlock
                 x:Name="StatusMessage1"
                 HorizontalAlignment="Left"

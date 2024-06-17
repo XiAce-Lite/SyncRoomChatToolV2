@@ -73,13 +73,13 @@ namespace SyncRoomChatToolV2.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("500")]
-        public decimal waitTiming {
+        [global::System.Configuration.DefaultSettingValueAttribute("200")]
+        public decimal WaitValue {
             get {
-                return ((decimal)(this["waitTiming"]));
+                return ((decimal)(this["WaitValue"]));
             }
             set {
-                this["waitTiming"] = value;
+                this["WaitValue"] = value;
             }
         }
         
@@ -92,6 +92,114 @@ namespace SyncRoomChatToolV2.Properties {
             }
             set {
                 this["OpenLink"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("./link.wav")]
+        public string LinkWaveFilePath {
+            get {
+                return ((string)(this["LinkWaveFilePath"]));
+            }
+            set {
+                this["LinkWaveFilePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool CanSpeech {
+            get {
+                return ((bool)(this["CanSpeech"]));
+            }
+            set {
+                this["CanSpeech"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseVoiceVox {
+            get {
+                return ((bool)(this["UseVoiceVox"]));
+            }
+            set {
+                this["UseVoiceVox"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string VoiceVoxPath {
+            get {
+                return ((string)(this["VoiceVoxPath"]));
+            }
+            set {
+                this["VoiceVoxPath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("http://127.0.0.1:50021")]
+        public string VoiceVoxAddress {
+            get {
+                return ((string)(this["VoiceVoxAddress"]));
+            }
+            set {
+                this["VoiceVoxAddress"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("40")]
+        public decimal CutLength {
+            get {
+                return ((decimal)(this["CutLength"]));
+            }
+            set {
+                this["CutLength"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool WindowTopMost {
+            get {
+                return ((bool)(this["WindowTopMost"]));
+            }
+            set {
+                this["WindowTopMost"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public double Volume {
+            get {
+                return ((double)(this["Volume"]));
+            }
+            set {
+                this["Volume"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string AccessToken {
+            get {
+                return ((string)(this["AccessToken"]));
+            }
+            set {
+                this["AccessToken"] = value;
             }
         }
     }

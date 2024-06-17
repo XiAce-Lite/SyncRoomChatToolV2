@@ -5,7 +5,11 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
-using System.Windows.Controls;
+using System.IO;
+using NAudio.Wave;
+using Newtonsoft.Json;
+using SyncRoomChatToolV2.View;
+using System.Net;
 
 namespace SyncRoomChatToolV2
 {
@@ -15,9 +19,326 @@ namespace SyncRoomChatToolV2
     public partial class MainWindow : Window
     {
         private readonly MainWindowViewModel MainVM = new();
+
         [GeneratedRegex("https?://")]
         private static partial Regex httpReg();
+        [GeneratedRegex(@"[ω]")]
+        private static partial Regex omegaReg();
+        [GeneratedRegex("[ぁ-んァ-ヶｱ-ﾝﾞﾟ一-龠！-／：-＠［-｀｛-～、-〜”’・]")]
+        private static partial Regex jpReg();
+        [GeneratedRegex(@"^\/\d{1,2}")]
+        private static partial Regex styleReg();
+        [GeneratedRegex(@"\d{1,2}")]
+        private static partial Regex numReg();
+        [GeneratedRegex(@"^/p",RegexOptions.IgnoreCase)]
+        private static partial Regex speedReg();
+        [GeneratedRegex(@"^[[0-9]+[.]?[0-9]{1,1}|[0-9]+]")]
+        private static partial Regex num2Reg();
+        [GeneratedRegex(@"^/s", RegexOptions.IgnoreCase)]
+        private static partial Regex speechReg();
+        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
+        private static partial Regex chimeReg();
+        [GeneratedRegex("ツイキャスユーザ")]
+        private static partial Regex twiCasUserReg();
+        [GeneratedRegex(@"(８|8){2,}", RegexOptions.IgnoreCase)]
+        private static partial Regex handClap1Reg();
+        [GeneratedRegex(@"(８|8){1,}", RegexOptions.IgnoreCase)]
+        private static partial Regex handClap2Reg();
+        [GeneratedRegex(@"(ｗ|w){2,}", RegexOptions.IgnoreCase)]
+        private static partial Regex laugh1Reg();
+        [GeneratedRegex(@"(ｗ|w){1,}$", RegexOptions.IgnoreCase)]
+        private static partial Regex laugh2Reg();
+
         private static string LastURL = "";
+
+        static readonly List<Speaker> VoiceLists = [];
+        private static readonly string VoiceVoxDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs\\VOICEVOX\\vv-engine\\run.exe");
+        private static readonly string VoiceVoxDefaultOldPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs\\VOICEVOX\\run.exe");
+
+        private static readonly List<Speaker> UserTable = [];
+        private static readonly List<Speaker> StyleDef = [];
+        private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
+        
+        private static void UpdateUserOption(bool existsFlg, string UserName, int StyleId, bool ChatFlg, bool SpeechFlg, double SpeedScale)
+        {
+            if (existsFlg)
+            {
+                foreach (var item in UserTable.Where(x => x.UserName == UserName))
+                {
+                    item.StyleId = StyleId;
+                    item.UserName = UserName;
+                    item.ChimeFlg = ChatFlg;
+                    item.SpeechFlg = SpeechFlg;
+                    item.SpeedScale = SpeedScale;
+                }
+            }
+            else
+            {
+                Speaker addLine = new()
+                {
+                    StyleId = StyleId,
+                    UserName = UserName,
+                    ChimeFlg = ChatFlg,
+                    SpeechFlg = SpeechFlg,
+                    SpeedScale = SpeedScale
+                };
+                UserTable.Add(addLine);
+            }
+        }
+
+        private static void SpeechMessage(string UserName, string Message)
+        {
+            int Lang = 0;
+            int StyleId = 2;
+            bool ChimeFlg = false;
+            bool SpeechFlg = true;
+            double SpeedScale = 1;
+
+            //しゃべらないなら抜ける。外で判断してるっけ？
+            //if (Settings.Default.CanSpeech == false) { return; }
+
+            //Microsoft Harukaの設定
+            SpeechSynthesizer synth = new()
+            {
+                Rate = -1
+            };
+            synth.SelectVoice("Microsoft Haruka Desktop");
+
+            //正規表現用match作成
+            Match match;
+
+            //絵文字っぽいのが入っているかどうかのチェック。半角スペースに置換
+            var newCommentChar = Message.ToCharArray();
+            for (int i = 0; i < newCommentChar.Length; i++)
+            {
+                switch (char.GetUnicodeCategory(newCommentChar[i]))
+                {
+                    case System.Globalization.UnicodeCategory.Surrogate:
+                        newCommentChar[i] = Convert.ToChar(" ");
+                        break;
+                    case System.Globalization.UnicodeCategory.OtherSymbol:
+                        newCommentChar[i] = Convert.ToChar(" ");
+                        break;
+                    case System.Globalization.UnicodeCategory.PrivateUse:
+                        newCommentChar[i] = Convert.ToChar(" ");
+                        break;
+                }
+            }
+
+            Message = new string(newCommentChar);
+            Message = Message.Trim();
+
+            //ωのチェック。これうざいので。
+            match = omegaReg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace("ω", "");
+            }
+
+            if (string.IsNullOrEmpty(Message)) { return; }
+
+            //英数のみかのチェックというか、指定のワードが入ってるかどうか（主に日本語）
+            match = jpReg().Match(Message);
+            if (match.Success == false) { Lang = 1; }
+
+            //ランダム音声割り当て用。ここ、コメントしたら全員デフォでしゃべる。
+            Random rnd = new() { };
+            StyleId = RandTable[rnd.Next(RandTable.Length)];
+
+            bool existsFlg = UserTable.Exists(x => x.UserName == UserName);
+            if (existsFlg)
+            {
+                //UserTableから、StyleIdその他の取り出し。
+                foreach (var item in UserTable.Where(x => x.UserName == UserName))
+                {
+                    StyleId = item.StyleId;
+                    ChimeFlg = item.ChimeFlg;
+                    SpeechFlg = item.SpeechFlg;
+                    SpeedScale = item.SpeedScale;
+                    break;
+                }
+            }
+            else
+            {
+                UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
+            }
+
+            //行頭のコマンド有無のチェック。スタイル指定。
+            match = styleReg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace(match.ToString(), "");
+                //[数値]な形式の数値ではある。桁指定したので、[0]～[99]まで。
+                match = numReg().Match(match.ToString());
+                if (match.Success)
+                {
+                    //数値は取れたので範囲チェック。StyleIdの一覧と比較。
+                    if (StyleDef.Exists(x => x.StyleId == int.Parse(match.ToString())))
+                    {
+                        StyleId = int.Parse(match.ToString());
+
+                        //[]で指定された数値が、スタイル一覧と合致した場合は、UserTableになければ追加、あれば更新。
+                        UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
+                    }
+                }
+            }
+
+            //行頭のコマンド有無のチェック。スピード指定。
+            match = speedReg().Match(Message);
+            if (match.Success)
+            {
+                //まずは/pで始まってるか。見つかったらそれはコメントから除去
+                Message = Message.Replace(match.ToString(), "");
+                match = num2Reg().Match(Message);
+                if (match.Success)
+                {
+                    //次に数字があるか。
+                    Message = Message.Replace(match.ToString(), "");
+                    SpeedScale = Convert.ToDouble(match.ToString());
+                    if (SpeedScale > 1.8)
+                    {
+                        SpeedScale = 1.8;
+                    }
+                    if (SpeedScale < 0.4)
+                    {
+                        SpeedScale = 0.4;
+                    }
+                    UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
+                }
+            }
+
+            //行頭コマンドチェック。/s はスピーチのトグル
+            match = speechReg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace(match.ToString(), "");
+                UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, !SpeechFlg, SpeedScale);
+            }
+
+            //行頭コマンドチェック。/c はチャイムのトグル
+            match = chimeReg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace(match.ToString(), "");
+                UpdateUserOption(existsFlg, UserName, StyleId, !ChimeFlg, SpeechFlg, SpeedScale);
+            }
+
+            //UserTableから、StyleIdその他の取り出し。
+            foreach (var item in UserTable.Where(x => x.UserName == UserName))
+            {
+                StyleId = item.StyleId;
+                ChimeFlg = item.ChimeFlg;
+                SpeechFlg = item.SpeechFlg;
+                break;
+            }
+
+            //名前にツイキャスユーザが入っている場合。
+            if (twiCasUserReg().Match(Message).Success) { StyleId = 8; }
+
+            //8888対応
+            match = handClap1Reg().Match(Message);
+            if (match.Success)
+            {
+                Lang = 0;
+                Message = Message.Replace(match.ToString(), "、パチパチパチ");
+            }
+            //8888対応
+            match = handClap2Reg().Match(Message);
+            if (match.Success)
+            {
+                Lang = 0;
+                Message = Message.Replace(match.ToString(), "、パチ");
+            }
+
+            //ｗｗｗ対応
+            match = laugh1Reg().Match(Message);
+            if (match.Success)
+            {
+                Lang = 0;
+                Message = Message.Replace(match.ToString(), "、ふふっ");
+            }
+
+            //行末のｗｗｗ対応
+            match = laugh2Reg().Match(Message);
+            if (match.Success)
+            {
+                Lang = 0;
+                Message = Message.Replace(match.ToString(), "、ふふっ");
+            }
+
+            //文字数制限
+            if (Message.Length > (int)Settings.Default.CutLength)
+            {
+                string[] cutText = ["、以下略。", ", Omitted below"];
+                Message = Message[..(int)(Settings.Default.CutLength - 1)];
+                Message += cutText[Lang];
+            }
+
+            if (Settings.Default.UseVoiceVox == false)
+            {
+                synth.Speak(Message);
+                return;
+            }
+
+            //VOICEVOX用
+            string baseUrl = Settings.Default.VoiceVoxAddress;
+            string url;
+
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                //たまに消えるよね、君。
+                baseUrl = "http://127.0.0.1:50021";
+            }
+
+            if (baseUrl.Substring(baseUrl.Length - 1, 1) != "/")
+            {
+                baseUrl += "/";
+            }
+
+            //クエリー作成
+            url = baseUrl + $"audio_query?text='{Message}'&speaker={StyleId}";
+
+            var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+            string QueryResponce = "";
+
+            var ret = client.Post(ref QueryResponce, "");
+
+            if (ret == null)
+            {
+                return;
+            }
+
+            //音声合成
+            var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(QueryResponce.ToString());
+#nullable disable warnings
+            queryJson.VolumeScale = Settings.Default.Volume;
+#nullable restore
+            queryJson.SpeedScale = SpeedScale;
+            QueryResponce = JsonConvert.SerializeObject(queryJson);
+
+            if (ret.StatusCode.Equals(HttpStatusCode.OK))
+            {
+                url = baseUrl + $"synthesis?speaker={StyleId}";
+                client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+
+                string wavFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+                ret = client.Post(ref QueryResponce, wavFile);
+                if (ret.StatusCode.Equals(HttpStatusCode.OK))
+                {
+                    //再生する。
+                    var waveReader = new WaveFileReader(wavFile);
+                    var waveOut = new WaveOut();
+                    waveOut.Init(waveReader);
+                    waveOut.Play();
+                    /*
+                    while (waveOut.PlaybackState == PlaybackState.Playing)
+                    {
+                        await Task.Delay(50);
+                    }
+                    */
+                }
+            }
+        }
 
         public MainWindow()
         {
@@ -26,13 +347,140 @@ namespace SyncRoomChatToolV2
 
             InitializeComponent();
 
+            //100ms以下は流石に速すぎると思うの。
+            if (Settings.Default.WaitValue < 100) { Settings.Default.WaitValue = 100; }
+            //文字列カットも20文字未満は流石に切りすぎだと思うの。
+            if (Settings.Default.CutLength < 20) { Settings.Default.CutLength = 20; }
+
+            //VOICEVOXのパス設定がされていなくて（初回起動時想定。デフォルトコンフィグは空なので）
+            if (String.IsNullOrEmpty(Settings.Default.VoiceVoxPath))
+            {
+                //VOICEVOXデフォルトパスにRun.exeが居る＝インストールされているとみなし、
+                if (File.Exists(VoiceVoxDefaultPath))
+                {
+                    //設定に保存する＝VOICEVOXが使えると見なす。
+                    //VOICEVOX 0.16 以降のバージョンパス（vv-engine）
+                    Settings.Default.VoiceVoxPath = VoiceVoxDefaultPath;
+                }
+                else
+                {
+                    //パス設定なし＝初回＆VOICEVOX 0.16 未満のバージョン（旧パス）
+                    Settings.Default.VoiceVoxPath = VoiceVoxDefaultOldPath;
+                }
+            }
+            else
+            {
+                if (!File.Exists(Settings.Default.VoiceVoxPath))
+                {
+                    //VOICEVOXデフォルトパスにRun.exeが居る＝インストールされているとみなし、
+                    if (File.Exists(VoiceVoxDefaultPath))
+                    {
+                        //設定に保存する＝VOICEVOXが使えると見なす。
+                        //VOICEVOX 0.16 以降のバージョンパス（vv-engine）
+                        Settings.Default.VoiceVoxPath = VoiceVoxDefaultPath;
+                    }
+                    else
+                    {
+                        //パス設定なし＝初回＆VOICEVOX 0.16 未満のバージョン（旧パス）
+                        Settings.Default.VoiceVoxPath = VoiceVoxDefaultOldPath;
+                    }
+                }
+            }
+
+            //存在しないリンクが貼られてた際の固定音声ファイルが指定されている＝裏で直接コンフィグファイルをイジった想定
+            if (!File.Exists(Settings.Default.LinkWaveFilePath))
+            {
+                //固定ファイルなしとする。
+                Settings.Default.LinkWaveFilePath = "";
+            }
+
+            //VOICEVOXのローカルアドレスチェック
+            if (String.IsNullOrEmpty(Settings.Default.VoiceVoxAddress))
+            {
+                Settings.Default.VoiceVoxAddress = "http://127.0.0.1:50021";
+            }
+            Settings.Default.Save();
+
+            //VOICEVOXエンジンの起動チェック
+            TargetProcess tp = new("run");
+            if (!string.IsNullOrEmpty(Settings.Default.VoiceVoxPath))
+            {
+                if (tp.IsAlive == false)
+                {
+                    try
+                    {
+                        //自動起動をトライするが、失敗したって平気さ。知らねぇよ。
+                        ProcessStartInfo processStartInfo = new()
+                        {
+                            FileName = Settings.Default.VoiceVoxPath,
+                            WindowStyle = ProcessWindowStyle.Hidden
+                        };
+                        Process.Start(processStartInfo);
+                    }
+                    catch
+                    {
+                        SpeechSynthesizer synth = new();
+                        synth.SelectVoice("Microsoft Haruka Desktop");
+                        synth.Speak($"エラーが発生しています。VOICEVOXの自動起動に失敗しました。");
+                        Application.Current.Shutdown();
+                    }
+                }
+            }
+
+            string url = Settings.Default.VoiceVoxAddress;
+            if (url.Substring(url.Length - 1, 1) != "/")
+            {
+                url += "/";
+            }
+            url += "speakers";
+            var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+            var ret = client.Get();
+            if (ret != null)
+            {
+                //Jsonのデシリアライズ。VOICEVOXのStyleIdの一覧を作る。
+#nullable disable warnings
+                List<SpeakerFromAPI> VoiceVoxSpeakers = JsonConvert.DeserializeObject<List<SpeakerFromAPI>>(ret.ToString());
+
+                foreach (SpeakerFromAPI speaker in VoiceVoxSpeakers)
+                {
+                    foreach (StyleFromAPI st in speaker.Styles)
+                    {
+                        Speaker addLine = new()
+                        {
+                            StyleId = st.Id
+                        };
+
+                        //ホントはSyncRoomのユーザ用のClassだけど、Voiceの一覧にも流用
+                        //ホントは自分のIDとボイス名だけでもいい気がするんだけど、そのマッチは面倒だったので。
+                        Speaker addVoice = new()
+                        {
+                            UserName = $"{speaker.Name}({st.Name})",
+                            StyleId = addLine.StyleId
+                        };
+
+                        VoiceLists.Add(addVoice);
+                        StyleDef.Add(addLine);
+                    }
+                }
+#nullable restore
+                /* autoCompListが使えるかも分からんし、一旦コメントアウト
+                VoiceLists.Sort((a, b) => a.StyleId - b.StyleId);
+                foreach (Speaker st in VoiceLists)
+                {
+                    // 候補リストに項目を追加（初期設定）
+                    autoCompList.Add($"/{st.StyleId} {st.UserName} にボイス変更");
+                }
+                autoCompList.Add("/p0.4 最小スピード");
+                autoCompList.Add("/p1.0 標準スピード");
+                autoCompList.Add("/p1.8 最大スピード");
+                */
+            }
+
             ContentRendered += MainWindow_ContentRendered;
             Closing += MainWindow_Closing;
 
-#nullable disable warnings
             MainVM.Info.SysInfo = "起動中…";
-            MainVM.Info.ChatLog = "チャットログが出る予定";
-#nullable restore
+            MainVM.Info.ChatLog = "";
             DataContext = MainVM;
         }
 
@@ -77,13 +525,7 @@ namespace SyncRoomChatToolV2
 
         async Task GetChat()
         {
-            string msg = "監視を開始します…";
-
-            SpeechSynthesizer synth = new ()
-            {
-                Rate = -1
-            };
-            synth.SelectVoice("Microsoft Haruka Desktop");
+            string msg = "チャット監視を開始します…";
 
             //外のループ。プロセス確認用。
             while (true) {
@@ -121,7 +563,7 @@ namespace SyncRoomChatToolV2
 
                     if (rootElement is null)
                     {
-                        msg = "SyncRoomが立ち上がってません。RootElement Is Null.";
+                        msg = "RootElement Is Null.";
                         continue;
                     }
 
@@ -144,17 +586,17 @@ namespace SyncRoomChatToolV2
 
                     if (studio is not null)
                     {
-                        //部屋主をセットする。
+                        //自分自身をセットする。
                         AutomationElement rack = twRack.GetFirstChild(studio);
-                        AutomationElement? roomOwner = null;
+                        AutomationElement? yourSelf = null;
                         if (rack is not null)
                         {
-                            roomOwner = twDivision.GetFirstChild(rack);
-                            if (roomOwner is not null)
+                            yourSelf = twDivision.GetFirstChild(rack);
+                            if (yourSelf is not null)
                             {
                                 //名前と演奏パートの取得
-                                var tempName = twName.GetFirstChild(roomOwner);
-                                var tempPart = twPart.GetFirstChild(roomOwner);
+                                var tempName = twName.GetFirstChild(yourSelf);
+                                var tempPart = twPart.GetFirstChild(yourSelf);
                                 var tempNameText = twControl.GetFirstChild(tempName);
                                 var tempPartText = twControl.GetFirstChild(tempPart);
 
@@ -177,17 +619,16 @@ namespace SyncRoomChatToolV2
                         while (true)
                         {
                             MainVM.Info.SysInfo = msg;
-                            //MainVM.Members.Clear();
 
-                            await Task.Delay((int)Properties.Settings.Default.waitTiming);
+                            await Task.Delay((int)Settings.Default.WaitValue);
 
                             try
                             {
                                 //メンバーの削除＆追加（毎回やる割には問題なさそう）
-                                if (roomOwner is not null)
+                                if (yourSelf is not null)
                                 {
 #nullable disable warnings
-                                    var roomMember = twDivision.GetNextSibling(roomOwner);
+                                    var roomMember = twDivision.GetNextSibling(yourSelf);
 
                                     for (int i = (MainVM.Members.Count) - (1); i >= 1; i--)
                                     {
@@ -198,10 +639,7 @@ namespace SyncRoomChatToolV2
                                     {
                                         var tempName = twName.GetFirstChild(roomMember);
                                         var tempPart = twPart.GetFirstChild(roomMember);
-                                        if (tempName is null)
-                                        {
-                                            break;
-                                        }
+                                        if (tempName is null) { break; }
                                         var tempNameText = twControl.GetFirstChild(tempName);
                                         var tempPartText = twControl.GetFirstChild(tempPart);
 
@@ -247,39 +685,61 @@ namespace SyncRoomChatToolV2
                                 //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
                                 string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
 
+                                //初回取りこぼし or 最後のメッセージ読んじゃう、どっちがいいかしらねぇ。
                                 if ((elMessage.Current.Name != oldMessage)&&(!string.IsNullOrEmpty(oldMessage)))
                                 {
                                     MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
 
-                                    string newComment = elMessage.Current.Name;
+                                    string Message = elMessage.Current.Name;
+                                    bool IsLink = false;
+                                    //リンク自動オープン時の処理。
                                     Match match;
-                                    match = httpReg().Match(newComment);
+                                    match = httpReg().Match(Message);
                                     if (match.Success)
                                     {
-                                        string UriString = newComment[match.Index..];
+                                        IsLink = true;
+                                        string UriString = Message[match.Index..];
                                         Uri u = new(UriString);
 
-                                        if (Properties.Settings.Default.OpenLink)
+                                        Message = "リンクが張られました";
+
+                                        if (Settings.Default.OpenLink)
                                         {
                                             if (UriString != LastURL)
                                             {
                                                 if (u.IsAbsoluteUri)
                                                 {
                                                     Tools.OpenUrl(UriString);
-                                                    newComment = "リンクが張られました";
                                                 }
-                                            }
-                                            else
-                                            {
-                                                newComment = "";
                                             }
                                         }
                                         LastURL = UriString;
                                     }
 
-                                    if (!string.IsNullOrEmpty(newComment))
+                                    if (Settings.Default.CanSpeech)
                                     {
-                                        synth.Speak(newComment);
+                                        if (!IsLink)
+                                        {
+                                            if (!string.IsNullOrEmpty(Message))
+                                            {
+                                                //await SpeechMessage(elName.Current.Name, Message);
+                                                _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
+                                            }
+                                        }
+                                        else
+                                        {
+                                            //リンク固定ファイル再生時
+                                            if (!string.IsNullOrEmpty(Settings.Default.LinkWaveFilePath))
+                                            {
+                                                if (System.IO.Path.Exists(Settings.Default.LinkWaveFilePath))
+                                                {
+                                                    var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
+                                                    var waveOut = new WaveOut();
+                                                    waveOut.Init(waveReader);
+                                                    waveOut.Play();
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 oldMessage = elMessage.Current.Name;
@@ -291,8 +751,8 @@ namespace SyncRoomChatToolV2
                             }
                             catch (Exception e)
                             {
-                                msg = $"多分チャットウィンドウが見えてません。{e.Message}";
-                                continue;
+                                msg = $"何かエラーです。[{e.Message}] 多分チャットウィンドウが見えてません。";
+                                break;
                             }
                         }
                     }
@@ -306,6 +766,12 @@ namespace SyncRoomChatToolV2
                     msg = $"SyncRoomが立ち上がってません。No Process. {DateTime.Now}";
                 }
             }
+        }
+
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.ShowDialog();
         }
     }
 }

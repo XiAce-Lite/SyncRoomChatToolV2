@@ -14,11 +14,38 @@
     <Setting Name="GridRowWidthB" Type="System.Double" Scope="User">
       <Value Profile="(Default)">198</Value>
     </Setting>
-    <Setting Name="waitTiming" Type="System.Decimal" Scope="User">
-      <Value Profile="(Default)">500</Value>
+    <Setting Name="WaitValue" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">200</Value>
     </Setting>
     <Setting Name="OpenLink" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="LinkWaveFilePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">./link.wav</Value>
+    </Setting>
+    <Setting Name="CanSpeech" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="UseVoiceVox" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="VoiceVoxPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="VoiceVoxAddress" Type="System.String" Scope="User">
+      <Value Profile="(Default)">http://127.0.0.1:50021</Value>
+    </Setting>
+    <Setting Name="CutLength" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">40</Value>
+    </Setting>
+    <Setting Name="WindowTopMost" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="Volume" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="AccessToken" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
     </Setting>
   </Settings>
 </SettingsFile>

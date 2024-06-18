@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel;
 
 namespace SyncRoomChatToolV2.ModelView
 {
@@ -21,7 +16,7 @@ namespace SyncRoomChatToolV2.ModelView
         public string ChatLog
         {
             get => chatLog;
-            set { chatLog = value; OnPropertyChanged(nameof(ChatLog));}
+            set { chatLog = value; OnPropertyChanged(nameof(ChatLog)); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

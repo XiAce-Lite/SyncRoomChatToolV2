@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Controls;
 
 namespace SyncRoomChatToolV2.ModelView
@@ -53,7 +48,8 @@ namespace SyncRoomChatToolV2.ModelView
             Children.Add(child);
         }
 
-        public void Remove(Member child) {
+        public void Remove(Member child)
+        {
             Children?.Remove(child);
         }
     }

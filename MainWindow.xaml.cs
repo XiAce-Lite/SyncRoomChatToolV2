@@ -12,7 +12,6 @@ using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
@@ -25,12 +24,15 @@ namespace SyncRoomChatToolV2
     {
         private readonly MainWindowViewModel MainVM = new();
 
+        string yourName = "";
+
         //ルートエレメントとStudioエレメントのスコープを上げてみる。
         AutomationElement? rootElement = null;
         AutomationElement? studio = null;
 
         [GeneratedRegex("https?://")]
         private static partial Regex httpReg();
+
         [GeneratedRegex(@"[ω]")]
         private static partial Regex omegaReg();
 
@@ -39,24 +41,33 @@ namespace SyncRoomChatToolV2
 
         [GeneratedRegex(@"^\/\d{1,2}")]
         private static partial Regex styleReg();
+
         [GeneratedRegex(@"\d{1,2}")]
         private static partial Regex numReg();
+
         [GeneratedRegex(@"^/p", RegexOptions.IgnoreCase)]
         private static partial Regex speedReg();
+
         [GeneratedRegex(@"^[[0-9]+[.]?[0-9]{1,1}|[0-9]+]")]
         private static partial Regex num2Reg();
+
         [GeneratedRegex(@"^/s", RegexOptions.IgnoreCase)]
         private static partial Regex speechReg();
         //        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
         //        private static partial Regex chimeReg();
+
         [GeneratedRegex("ツイキャスユーザ")]
         private static partial Regex twiCasUserReg();
+
         [GeneratedRegex(@"(８|8){2,}", RegexOptions.IgnoreCase)]
         private static partial Regex handClap1Reg();
+
         [GeneratedRegex(@"(８|8){1,}", RegexOptions.IgnoreCase)]
         private static partial Regex handClap2Reg();
+
         [GeneratedRegex(@"(ｗ|w){2,}", RegexOptions.IgnoreCase)]
         private static partial Regex laugh1Reg();
+
         [GeneratedRegex(@"(ｗ|w){1,}$", RegexOptions.IgnoreCase)]
         private static partial Regex laugh2Reg();
 
@@ -662,6 +673,7 @@ namespace SyncRoomChatToolV2
                                 var tempName = twName.GetFirstChild(yourSelf);
                                 if (tempName is null) { break; }
                                 var tempNameText = twControl.GetFirstChild(tempName);
+                                yourName = tempNameText.Current.Name;
 
                                 var tempPart = twPart.GetFirstChild(yourSelf);
                                 if (tempPart is null) { break; }
@@ -921,7 +933,8 @@ namespace SyncRoomChatToolV2
                     }
                 }
 
-                if (!existFlg) { 
+                if (!existFlg)
+                {
                     ChatInputCombo.Items.Add(ChatInputCombo.Text);
                 }
 

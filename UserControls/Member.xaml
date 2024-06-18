@@ -7,25 +7,26 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:v2Model="clr-namespace:SyncRoomChatToolV2.ModelView"
     d:DataContext="{d:DesignInstance Type=v2Model:Member}"
-    d:DesignHeight="34"
+    d:DesignHeight="50"
     d:DesignWidth="140"
     mc:Ignorable="d">
     <Grid>
         <VirtualizingStackPanel Orientation="Horizontal">
             <VirtualizingStackPanel>
                 <Image
-                    Width="30"
-                    Height="30"
+                    Width="45"
+                    Height="45"
                     Margin="0,2,0,0"
-                    Source="{Binding MemberImage, UpdateSourceTrigger=PropertyChanged}" />
+                    Source="{Binding MemberImage.Source}" />
             </VirtualizingStackPanel>
             <VirtualizingStackPanel>
-                <VirtualizingStackPanel Margin="2,0,0,0" Orientation="Vertical">
+                <VirtualizingStackPanel Margin="10,0,0,0" Orientation="Vertical">
                     <TextBlock
                         x:Name="MemberName"
                         d:Text="hogehogehoge"
                         FontWeight="Bold"
-                        Text="{Binding MemberName}" />
+                        Text="{Binding MemberName}"
+                        TextWrapping="Wrap" />
                     <TextBlock
                         x:Name="MemberPart"
                         Margin="3,2,0,0"

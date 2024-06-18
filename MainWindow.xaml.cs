@@ -13,7 +13,6 @@ using System.Net;
 using System.Windows.Input;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Windows.Media.Media3D;
 using System.Windows.Media.Imaging;
 
 namespace SyncRoomChatToolV2
@@ -45,8 +44,8 @@ namespace SyncRoomChatToolV2
         private static partial Regex num2Reg();
         [GeneratedRegex(@"^/s", RegexOptions.IgnoreCase)]
         private static partial Regex speechReg();
-        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
-        private static partial Regex chimeReg();
+//        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
+//        private static partial Regex chimeReg();
         [GeneratedRegex("ツイキャスユーザ")]
         private static partial Regex twiCasUserReg();
         [GeneratedRegex(@"(８|8){2,}", RegexOptions.IgnoreCase)]
@@ -67,6 +66,40 @@ namespace SyncRoomChatToolV2
         private static readonly List<Speaker> UserTable = [];
         private static readonly List<Speaker> StyleDef = [];
         private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
+
+        private static BitmapSource CaptureAndConvert(AutomationElement avatar)
+        {
+            try
+            {
+                var rect = avatar.Current.BoundingRectangle;
+                // Set the bitmap object to the size of the screen
+                var bmpScreenshot = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
+
+                // Create a graphics object from the bitmap
+                var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
+
+                // Take the screenshot from the upper left corner to the right bottom corner
+                gfxScreenshot.CopyFromScreen((int)rect.X, (int)rect.Y, 0, 0,
+                                                 new System.Drawing.Size((int)rect.Width, (int)rect.Height), CopyPixelOperation.SourceCopy);
+
+                var buffer = new byte[bmpScreenshot.Size.Height * bmpScreenshot.Size.Width * 4];
+                var stream = new MemoryStream(buffer);
+
+                bmpScreenshot.Save(stream, ImageFormat.Png);
+                stream.Seek(0, SeekOrigin.Begin);
+                BitmapSource bitmapSource = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+
+                bmpScreenshot.Dispose();
+                gfxScreenshot.Dispose();
+                stream.Dispose();
+
+                return bitmapSource;
+            }
+            catch (Exception)
+            {   
+                throw;
+            }
+        }
 
         private static void UpdateUserOption(bool existsFlg, string UserName, int StyleId, bool ChatFlg, bool SpeechFlg, double SpeedScale)
         {
@@ -435,7 +468,7 @@ namespace SyncRoomChatToolV2
                         SpeechSynthesizer synth = new();
                         synth.SelectVoice("Microsoft Haruka Desktop");
                         synth.Speak($"エラーが発生しています。VOICEVOXの自動起動に失敗しました。");
-                        Application.Current.Shutdown();
+                        System.Windows.Application.Current.Shutdown();
                     }
                 }
             }
@@ -533,12 +566,13 @@ namespace SyncRoomChatToolV2
 
         private void BtnExit_Click(object sender, RoutedEventArgs e)
         {
-            Application.Current.Shutdown();
+            System.Windows.Application.Current.Shutdown();
         }
 
         async Task GetChat()
         {
-            string msg = "チャット監視を開始します…";
+            string msg = "読み上げちゃん起動中…";
+            bool firstFlg = true;
 
             //外のループ。プロセス確認用。
             while (true)
@@ -620,7 +654,8 @@ namespace SyncRoomChatToolV2
                                 var tempAvatar = twAvatar.GetFirstChild(yourSelf);
                                 if (tempAvatar is null) { break; }
                                 var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
-
+                                //何とかキャプチャしてアイコン取った。
+                                BitmapSource bitmapSource = CaptureAndConvert(tempAvatarImage);
 
                                 Member item = new();
                                 if (tempNameText.Current.Name != null)
@@ -632,30 +667,10 @@ namespace SyncRoomChatToolV2
                                     item.MemberPart = tempPartText.Current.Name;
                                 }
 
-                                //todo: rect 指定次第で、キャプチャ取れるか？
-                                //todo: ファイルにするのは馬鹿らしいので、何とかソースで。
-                                var rect = tempAvatarImage.Current.BoundingRectangle;
-
-                                // Set the bitmap object to the size of the screen
-                                var bmpScreenshot = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
-
-                                // Create a graphics object from the bitmap
-                                var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
-
-                                // Take the screenshot from the upper left corner to the right bottom corner
-                                gfxScreenshot.CopyFromScreen((int)rect.Left, (int)rect.Top, 0, 0,
-                                                                 new System.Drawing.Size((int)rect.Width, (int)rect.Height), CopyPixelOperation.SourceCopy);
-
-                                var buffer = new byte[bmpScreenshot.Size.Height * bmpScreenshot.Size.Width * 4];
-                                var stream = new MemoryStream(buffer);
-
-                                bmpScreenshot.Save(stream, ImageFormat.Png);
-                                bmpScreenshot.Save("f:temp/temp.png");
-                                stream.Seek(0, SeekOrigin.Begin);
-                                item.MemberImage = new System.Windows.Controls.Image();
-                                item.MemberImage.Source = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-
-
+                                item.MemberImage = new()
+                                {
+                                    Source = bitmapSource
+                                };
 #nullable disable warnings
                                 MainVM.Members.Add(item);
 #nullable restore
@@ -665,6 +680,14 @@ namespace SyncRoomChatToolV2
                         TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
                         AutomationElement chat = twChat.GetFirstChild(studio);
                         if (chat is null) { continue; }
+
+                        //非常にダサいがメインループの外で一回チャットの最終行を取得し、oldMessageにぶっ込む。
+                        AutomationElement chatList1 = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                            new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
+                        AutomationElement elMessage1 = twMessage.GetLastChild(chatList1);
+                        elMessage1 = twControl.GetLastChild(elMessage1);
+                        if (elMessage1 is not null) { oldMessage = elMessage1.Current.Name; }
+                        firstFlg = string.IsNullOrEmpty(oldMessage);
 
                         //メインのループ。チャット取得用。
                         while (true)
@@ -689,10 +712,17 @@ namespace SyncRoomChatToolV2
                                     while (roomMember is not null)
                                     {
                                         var tempName = twName.GetFirstChild(roomMember);
-                                        var tempPart = twPart.GetFirstChild(roomMember);
                                         if (tempName is null) { break; }
+                                        var tempPart = twPart.GetFirstChild(roomMember);
+                                        if (tempPart is null) { break; }
                                         var tempNameText = twControl.GetFirstChild(tempName);
+                                        if (tempNameText is null) { break; }
                                         var tempPartText = twControl.GetFirstChild(tempPart);
+                                        if (tempPartText is null) { break; }
+                                        var tempAvatar = twAvatar.GetFirstChild(roomMember);
+                                        if (tempAvatar is null) { break; }
+                                        var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
+                                        BitmapSource bitmapSource = CaptureAndConvert(tempAvatarImage);
 
                                         Member item = new();
                                         if (tempNameText.Current.Name != null)
@@ -703,6 +733,10 @@ namespace SyncRoomChatToolV2
                                         {
                                             item.MemberPart = tempPartText.Current.Name;
                                         }
+                                        item.MemberImage = new()
+                                        {
+                                            Source = bitmapSource
+                                        };
 
                                         MainVM.Members.Add(item);
 #nullable restore
@@ -736,10 +770,10 @@ namespace SyncRoomChatToolV2
                                 //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
                                 string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
 
-                                //初回取りこぼし or 最後のメッセージ読んじゃう、どっちがいいかしらねぇ。
-                                if ((elMessage.Current.Name != oldMessage) && (!string.IsNullOrEmpty(oldMessage)))
+                                if ((elMessage.Current.Name != oldMessage) || (firstFlg))
                                 {
-                                    MainVM.Info.ChatLog += System.Environment.NewLine + chatLine;
+                                    firstFlg = false;
+                                    MainVM.Info.ChatLog += Environment.NewLine + chatLine;
 
                                     string Message = elMessage.Current.Name;
                                     bool IsLink = false;
@@ -828,7 +862,7 @@ namespace SyncRoomChatToolV2
             settingsWindow.ShowDialog();
         }
 
-        private void ChatInputCombo_KeyDown(object sender, KeyEventArgs e)
+        private void ChatInputCombo_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (studio is null) { return; }
 

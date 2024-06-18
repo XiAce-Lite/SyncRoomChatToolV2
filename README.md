@@ -15,8 +15,6 @@ VOICEVOXを別途入れておけば、VOICEVOXの音声合成を使います。�
 ## 使い方
 [ここ](https://github.com/XiAce-Lite/SyncRoomChatToolV2/releases/latest)から最新版の  SyncRoomChatToolV2_vX.X.X.X.zip ファイルを落してきて、適当なフォルダに解凍して、あとは実行するだけ。
 
-インストーラーも付けてみました。installer.zipの中身を解凍して、Setup.exeを実行します。.msiを叩いてもいけるはず。
-
 Zipの中のファイルだけで動くはずですが、なんぞ.net 関連のファイルが要るかもです。バージョンアップの場合は、.exeファイルだけの配置でいいはずです。
 
 管理者権限へ昇格するようにマニフェストを設定したつもりではありますが、そうじゃなかったら、管理者権限で動かした方がいいです。

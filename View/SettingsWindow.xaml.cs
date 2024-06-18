@@ -1,6 +1,6 @@
 ﻿using Microsoft.Win32;
-using System.Windows;
 using SyncRoomChatToolV2.Properties;
+using System.Windows;
 
 namespace SyncRoomChatToolV2.View
 {

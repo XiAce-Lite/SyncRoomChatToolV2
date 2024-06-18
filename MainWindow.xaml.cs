@@ -1,18 +1,19 @@
-﻿using SyncRoomChatToolV2.ModelView;
-using SyncRoomChatToolV2.Properties;
-using System.Diagnostics;
-using System.Windows;
-using System.Windows.Automation;
-using System.Speech.Synthesis;
-using System.Text.RegularExpressions;
-using System.IO;
-using NAudio.Wave;
+﻿using NAudio.Wave;
 using Newtonsoft.Json;
+using SyncRoomChatToolV2.ModelView;
+using SyncRoomChatToolV2.Properties;
 using SyncRoomChatToolV2.View;
-using System.Net;
-using System.Windows.Input;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
+using System.Net;
+using System.Speech.Synthesis;
+using System.Text.RegularExpressions;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 namespace SyncRoomChatToolV2
@@ -32,8 +33,10 @@ namespace SyncRoomChatToolV2
         private static partial Regex httpReg();
         [GeneratedRegex(@"[ω]")]
         private static partial Regex omegaReg();
+
         [GeneratedRegex("[ぁ-んァ-ヶｱ-ﾝﾞﾟ一-龠！-／：-＠［-｀｛-～、-〜”’・]")]
         private static partial Regex jpReg();
+
         [GeneratedRegex(@"^\/\d{1,2}")]
         private static partial Regex styleReg();
         [GeneratedRegex(@"\d{1,2}")]
@@ -44,8 +47,8 @@ namespace SyncRoomChatToolV2
         private static partial Regex num2Reg();
         [GeneratedRegex(@"^/s", RegexOptions.IgnoreCase)]
         private static partial Regex speechReg();
-//        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
-//        private static partial Regex chimeReg();
+        //        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
+        //        private static partial Regex chimeReg();
         [GeneratedRegex("ツイキャスユーザ")]
         private static partial Regex twiCasUserReg();
         [GeneratedRegex(@"(８|8){2,}", RegexOptions.IgnoreCase)]
@@ -67,11 +70,19 @@ namespace SyncRoomChatToolV2
         private static readonly List<Speaker> StyleDef = [];
         private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
 
-        private static BitmapSource CaptureAndConvert(AutomationElement avatar)
+        private static BitmapSource? CaptureAndConvert(AutomationElement avatar)
         {
             try
             {
+                if (avatar is null)
+                {
+                    return null;
+                }
                 var rect = avatar.Current.BoundingRectangle;
+                if (rect.IsEmpty)
+                {
+                    return null;
+                }
                 // Set the bitmap object to the size of the screen
                 var bmpScreenshot = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
 
@@ -96,7 +107,7 @@ namespace SyncRoomChatToolV2
                 return bitmapSource;
             }
             catch (Exception)
-            {   
+            {
                 throw;
             }
         }
@@ -321,7 +332,12 @@ namespace SyncRoomChatToolV2
                 Message += cutText[Lang];
             }
 
-            if (Settings.Default.UseVoiceVox == false)
+            if (Lang == 1)
+            {
+                synth.SelectVoice("Microsoft Zira Desktop");
+            }
+
+            if ((Settings.Default.UseVoiceVox == false))
             {
                 synth.Speak(Message);
                 return;
@@ -655,7 +671,7 @@ namespace SyncRoomChatToolV2
                                 if (tempAvatar is null) { break; }
                                 var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
                                 //何とかキャプチャしてアイコン取った。
-                                BitmapSource bitmapSource = CaptureAndConvert(tempAvatarImage);
+                                BitmapSource? bitmapSource = CaptureAndConvert(tempAvatarImage);
 
                                 Member item = new();
                                 if (tempNameText.Current.Name != null)
@@ -667,10 +683,13 @@ namespace SyncRoomChatToolV2
                                     item.MemberPart = tempPartText.Current.Name;
                                 }
 
-                                item.MemberImage = new()
+                                if (bitmapSource is not null)
                                 {
-                                    Source = bitmapSource
-                                };
+                                    item.MemberImage = new()
+                                    {
+                                        Source = bitmapSource
+                                    };
+                                }
 #nullable disable warnings
                                 MainVM.Members.Add(item);
 #nullable restore
@@ -891,6 +910,21 @@ namespace SyncRoomChatToolV2
                 {
                     btn.Invoke();
                 }
+
+                bool existFlg = false;
+                foreach (var item in ChatInputCombo.Items)
+                {
+                    if (item.ToString() == ChatInputCombo.Text)
+                    {
+                        existFlg = true;
+                        break;
+                    }
+                }
+
+                if (!existFlg) { 
+                    ChatInputCombo.Items.Add(ChatInputCombo.Text);
+                }
+
                 ChatInputCombo.Text = "";
                 this.Activate();
             }

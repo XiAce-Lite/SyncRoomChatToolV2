@@ -117,12 +117,13 @@
                         <TextBox
                             x:Name="chatLog"
                             Grid.Row="0"
+                            Margin="0,0,0,1"
                             VerticalContentAlignment="Bottom"
                             local:TextBoxBehaviors.AutoScrollToEnd="True"
                             FontSize="18"
                             IsReadOnly="True"
                             Text="{Binding Info.ChatLog, UpdateSourceTrigger=PropertyChanged}"
-                            VerticalScrollBarVisibility="Auto" Margin="0,0,0,1" />
+                            VerticalScrollBarVisibility="Auto" />
                         <!--
                         <TextBox
                             x:Name="ChatInput"
@@ -138,6 +139,7 @@
                         <ComboBox
                             x:Name="ChatInputCombo"
                             Grid.Row="2"
+                            Margin="2,2,2,2"
                             materialDesign:HintAssist.Hint="チャット入力可能です。右クリックも使えます。"
                             materialDesign:HintAssist.IsFloating="True"
                             materialDesign:TextFieldAssist.DecorationVisibility="Hidden"

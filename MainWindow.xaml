@@ -9,7 +9,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:prop="clr-namespace:SyncRoomChatToolV2.Properties"
     xmlns:view="clr-namespace:SyncRoomChatToolV2.UserControls"
-    xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
     Title="SyncRoom読み上げちゃん V2"
     Width="400"
     Height="450"
@@ -59,21 +58,20 @@
                 <Border Margin="0,31,0,0" Background="White">
                     <!--  上部左側の画面のコンテンツをここに配置  -->
                     <ListView
-                        d:ItemsSource="{d:SampleData ItemCount=120}"
+                        d:ItemsSource="{d:SampleData ItemCount=7}"
                         ItemsSource="{Binding Members}"
                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                         ScrollViewer.IsDeferredScrollingEnabled="True"
+                        ScrollViewer.VerticalScrollBarVisibility="Disabled"
                         SelectionMode="Single"
                         VirtualizingPanel.IsVirtualizing="True"
                         VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <vwp:VirtualizingWrapPanel
+                                <VirtualizingStackPanel
                                     Orientation="Vertical"
-                                    StretchItems="True"
                                     VirtualizingPanel.IsVirtualizing="True"
                                     VirtualizingPanel.VirtualizationMode="Recycling" />
-
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
 
@@ -112,8 +110,53 @@
                             <RowDefinition Height="*" />
                             <RowDefinition Height="4" />
                             <RowDefinition Height="32" MinHeight="32" />
-
                         </Grid.RowDefinitions>
+
+                        <ListView
+                            x:Name="ChatViewYourSelf"
+                            Grid.Row="0"
+                            d:ItemsSource="{d:SampleData ItemCount=7}"
+                            ItemsSource="{Binding Chats, Mode=OneWay, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                            ScrollViewer.IsDeferredScrollingEnabled="True"
+                            ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                            SelectionMode="Single"
+                            TargetUpdated="ChatViewYourSelf_TargetUpdated"
+                            VirtualizingPanel.IsVirtualizing="True"
+                            VirtualizingPanel.VirtualizationMode="Recycling">
+                            <ListView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel
+                                        Orientation="Vertical"
+                                        VirtualizingPanel.IsVirtualizing="True"
+                                        VirtualizingPanel.VirtualizationMode="Recycling" />
+                                </ItemsPanelTemplate>
+                            </ListView.ItemsPanel>
+
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <!--  内容更新時のバインドエラー回避のおまじない。  -->
+                                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <VirtualizingStackPanel
+                                        Height="Auto"
+                                        Orientation="Vertical"
+                                        ScrollViewer.IsDeferredScrollingEnabled="true"
+                                        VirtualizingPanel.IsVirtualizing="True"
+                                        VirtualizingPanel.VirtualizationMode="Recycling">
+                                        <view:ChatControl />
+                                    </VirtualizingStackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!--
                         <TextBox
                             x:Name="chatLog"
                             Grid.Row="0"
@@ -124,6 +167,8 @@
                             IsReadOnly="True"
                             Text="{Binding Info.ChatLog, UpdateSourceTrigger=PropertyChanged}"
                             VerticalScrollBarVisibility="Auto" />
+                        -->
+
                         <!--
                         <TextBox
                             x:Name="ChatInput"
@@ -139,14 +184,14 @@
                         <ComboBox
                             x:Name="ChatInputCombo"
                             Grid.Row="2"
-                            Margin="2,2,2,2"
+                            Margin="4,0,4,0"
                             materialDesign:HintAssist.Hint="チャット入力可能です。右クリックも使えます。"
                             materialDesign:HintAssist.IsFloating="True"
                             materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
                             materialDesign:TextFieldAssist.HasClearButton="True"
                             materialDesign:TextFieldAssist.HasOutlinedTextField="True"
-                            materialDesign:TextFieldAssist.TextFieldCornerRadius="3"
-                            materialDesign:TextFieldAssist.UnderlineBrush="Black"
+                            materialDesign:TextFieldAssist.UnderlineBrush="DarkBlue"
+                            BorderThickness="0,0,0,1"
                             FontSize="14"
                             IsEditable="True"
                             KeyDown="ChatInputCombo_KeyDown" />
@@ -300,10 +345,9 @@
                             Style="{DynamicResource MaterialDesignHamburgerToggleButton}" />
                     </VirtualizingStackPanel>
                 </DockPanel>
-
-
             </materialDesign:ColorZone>
         </materialDesign:DrawerHost>
+
         <StatusBar Margin="1,1,1,1" VerticalAlignment="Bottom">
             <TextBlock
                 x:Name="StatusMessage1"

@@ -7,11 +7,13 @@ namespace SyncRoomChatToolV2.ModelView
     {
         public Info Info { get; set; }
         public ObservableCollection<Member> Members { get; set; }
+        public ObservableCollection<Chat> Chats { get; set; }
 
         public MainWindowViewModel()
         {
             Info = new Info();
             Members = [];
+            Chats = [];
         }
     }
 }

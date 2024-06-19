@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using SyncRoomChatToolV2.ModelView;
 using SyncRoomChatToolV2.Properties;
 using SyncRoomChatToolV2.View;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -553,7 +554,7 @@ namespace SyncRoomChatToolV2
             Closing += MainWindow_Closing;
 
             MainVM.Info.SysInfo = "起動中…";
-            MainVM.Info.ChatLog = "";
+            //MainVM.Info.ChatLog = "";
             DataContext = MainVM;
         }
 
@@ -607,7 +608,8 @@ namespace SyncRoomChatToolV2
                 TargetProcess targetProc = new("SYNCROOM2");
 
                 MainVM.Info.SysInfo = msg;
-                MainVM.Info.ChatLog = "";
+                //MainVM.Info.ChatLog = "";
+                MainVM.Chats.Clear();
 
                 await Task.Delay(1000);
 
@@ -661,6 +663,8 @@ namespace SyncRoomChatToolV2
 
                     if (studio is not null)
                     {
+                        msg = "studio exist.";
+
                         //自分自身をセットする。
                         AutomationElement rack = twRack.GetFirstChild(studio);
                         AutomationElement? yourSelf = null;
@@ -716,9 +720,15 @@ namespace SyncRoomChatToolV2
                         AutomationElement chatList1 = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                             new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
                         AutomationElement elMessage1 = twMessage.GetLastChild(chatList1);
-                        elMessage1 = twControl.GetLastChild(elMessage1);
-                        if (elMessage1 is not null) { oldMessage = elMessage1.Current.Name; }
-                        firstFlg = string.IsNullOrEmpty(oldMessage);
+                        if (elMessage1 is null) {
+                            firstFlg = true;
+                        }
+                        else
+                        {
+                            elMessage1 = twControl.GetLastChild(elMessage1);
+                            if (elMessage1 is not null) { oldMessage = elMessage1.Current.Name; }
+                            firstFlg = string.IsNullOrEmpty(oldMessage);
+                        }
 
                         //メインのループ。チャット取得用。
                         while (true)
@@ -783,20 +793,33 @@ namespace SyncRoomChatToolV2
                                 AutomationElement chatList = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
 
-                                AutomationElement elName = twName.GetLastChild(chatList);
-                                if (elName is null)
+                                if (chatList is null)
                                 {
-                                    msg = "チャット入力待ち";
-                                    continue;
+                                    msg = "chatList is null.";
+                                    break;
+                                }
+
+                                msg = "チャット入力待ち";
+                                AutomationElement elName = twName.GetLastChild(chatList);
+                                if (elName is null) 
+                                {
+                                    continue; 
                                 }
 
                                 elName = twControl.GetLastChild(elName);
+                                if (elName is null){ continue; }
 
                                 AutomationElement elTime = twTime.GetLastChild(chatList);
+                                if (elTime is null) { continue; }
                                 elTime = twControl.GetLastChild(elTime);
+                                if (elTime is null) { continue; }
+
 
                                 AutomationElement elMessage = twMessage.GetLastChild(chatList);
+                                if (elMessage is null){ continue; }
                                 elMessage = twControl.GetLastChild(elMessage);
+                                if (elMessage is null) { continue; }
+
 
                                 //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
                                 string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
@@ -804,11 +827,13 @@ namespace SyncRoomChatToolV2
                                 if ((elMessage.Current.Name != oldMessage) || (firstFlg))
                                 {
                                     firstFlg = false;
-                                    MainVM.Info.ChatLog += Environment.NewLine + chatLine;
+                                    //MainVM.Info.ChatLog += Environment.NewLine + chatLine;
 
                                     string Message = elMessage.Current.Name;
-                                    bool IsLink = false;
+
                                     //リンク自動オープン時の処理。
+                                    bool IsLink = false;
+                                    string url = "";
                                     Match match;
                                     match = httpReg().Match(Message);
                                     if (match.Success)
@@ -830,7 +855,25 @@ namespace SyncRoomChatToolV2
                                             }
                                         }
                                         LastURL = UriString;
+                                        url = UriString;
                                     }
+
+                                    //todo: チャット風表示の検討中
+                                    bool IsYourSelf = false;
+                                    if (elName.Current.Name == yourName)
+                                    {
+                                        IsYourSelf = true;
+                                    }
+                                    var item = new Chat
+                                    {
+                                        ChatTime = elTime.Current.Name,
+                                        UserName = elName.Current.Name,
+                                        Message = elMessage.Current.Name,
+                                        IsYourSelf = IsYourSelf,
+                                        Link = url
+                                    };
+                                    MainVM.Chats.Add(item);
+                                    //
 
                                     if (Settings.Default.CanSpeech)
                                     {
@@ -858,7 +901,6 @@ namespace SyncRoomChatToolV2
                                         }
                                         if (!string.IsNullOrEmpty(Message))
                                         {
-                                            //await SpeechMessage(elName.Current.Name, Message);
                                             _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
                                         }
                                     }
@@ -870,7 +912,7 @@ namespace SyncRoomChatToolV2
                             }
                             catch (Exception e)
                             {
-                                msg = $"何かエラーです。[{e.Message}] 多分チャットウィンドウが見えてません。";
+                                msg = $"何かエラーです。[{e.Message}] ";
                                 break;
                             }
                         }
@@ -940,6 +982,27 @@ namespace SyncRoomChatToolV2
 
                 ChatInputCombo.Text = "";
                 this.Activate();
+            }
+        }
+
+        private void ChatViewYourSelf_TargetUpdated(object sender, System.Windows.Data.DataTransferEventArgs e)
+        {
+            if (ChatViewYourSelf is not null)
+            {
+#nullable disable warnings
+                (ChatViewYourSelf.ItemsSource as INotifyCollectionChanged).CollectionChanged += new NotifyCollectionChangedEventHandler(ChatViewYourSelf_CollectionChanged);
+#nullable restore
+            }
+        }
+
+        private void ChatViewYourSelf_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (ChatViewYourSelf is not null)
+            {
+                if (ChatViewYourSelf.Items.Count > 0)
+                {
+                    ChatViewYourSelf?.ScrollIntoView(ChatViewYourSelf.Items[^1]);
+                }
             }
         }
     }

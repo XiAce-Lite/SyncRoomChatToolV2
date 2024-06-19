@@ -1,4 +1,5 @@
 ﻿using SyncRoomChatToolV2.Properties;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -90,22 +91,13 @@ namespace SyncRoomChatToolV2
             // 戻り値はTask<HttpResponseMessage>で、変数名.ResultとするとSystem.Net.Http.HttpResponseMessageクラスが取れます。
             try
             {
-                switch (reqType)
+                response = reqType switch
                 {
-                    case RequestType.none:
-                        response = httpClient.SendAsync(request);
-                        break;
-                    case RequestType.userInfo:
-                        response = httpClient2.SendAsync(request);
-                        break;
-                    case RequestType.commentInfo:
-                        response = httpClient3.SendAsync(request);
-                        break;
-                    default:
-                        response = httpClient.SendAsync(request);
-                        break;
-                }
-
+                    RequestType.none => httpClient.SendAsync(request),
+                    RequestType.userInfo => httpClient2.SendAsync(request),
+                    RequestType.commentInfo => httpClient3.SendAsync(request),
+                    _ => httpClient.SendAsync(request),
+                };
                 resBodyStr = response.Result.Content.ReadAsStringAsync().Result;
 
                 resStatusCode = response.Result.StatusCode;
@@ -169,35 +161,22 @@ namespace SyncRoomChatToolV2
             HttpStatusCode resStatusCoode;
             try
             {
-                switch (reqType)
+                response = reqType switch
                 {
-                    case RequestType.none:
-                        response = httpClient.SendAsync(request);
-                        break;
-                    case RequestType.userInfo:
-                        response = httpClient2.SendAsync(request);
-                        break;
-                    case RequestType.commentInfo:
-                        response = httpClient3.SendAsync(request);
-                        break;
-                    default:
-                        response = httpClient.SendAsync(request);
-                        break;
-                }
-
+                    RequestType.none => httpClient.SendAsync(request),
+                    RequestType.userInfo => httpClient2.SendAsync(request),
+                    RequestType.commentInfo => httpClient3.SendAsync(request),
+                    _ => httpClient.SendAsync(request),
+                };
                 if (!string.IsNullOrEmpty(QueryResponce))
                 {
                     var stream = response.Result.Content.ReadAsStreamAsync().Result;
 
-                    using (var fileStream = File.Create(BinaryFile))
-                    {
-                        using (var httpStream = response.Result.Content.ReadAsStreamAsync())
-                        {
-                            stream.CopyTo(fileStream);
-                            fileStream.Flush();
-                            resBodyStr = "ファイル出力OK";
-                        }
-                    }
+                    using var fileStream = File.Create(BinaryFile);
+                    using var httpStream = response.Result.Content.ReadAsStreamAsync();
+                    stream.CopyTo(fileStream);
+                    fileStream.Flush();
+                    resBodyStr = "ファイル出力OK";
                 }
                 else
                 {

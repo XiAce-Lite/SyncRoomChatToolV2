@@ -10,6 +10,7 @@ namespace SyncRoomChatToolV2
     {
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            Settings.Default.DemoMode = false;
             if (e.Args.Length > 0)
             {
                 foreach (var item in e.Args) {
@@ -17,12 +18,12 @@ namespace SyncRoomChatToolV2
                         if (item == "/demo")
                         {
                             Settings.Default.DemoMode = true;
-                            Settings.Default.Save();
                             break;
                         }
                     }
                 }
             }
+            Settings.Default.Save();
         }
     }
 }

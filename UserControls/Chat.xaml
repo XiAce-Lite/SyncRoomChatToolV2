@@ -38,19 +38,11 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <TextBlock
-                                x:Name="ChatTime"
-                                Grid.Row="2"
-                                Margin="0,0,6,0"
-                                HorizontalAlignment="Right"
-                                d:Text="DummyTime"
-                                FontSize="10"
-                                Text="{Binding ChatTime}" />
-                            <TextBlock
                                 Grid.Row="1"
                                 Width="Auto"
                                 Margin="14,4,4,4"
                                 FontSize="18"
-                                Text="{Binding Message}" />
+                                Text="{Binding Message}" TextWrapping="WrapWithOverflow" />
 
                             <TextBlock Grid.Row="1" Margin="14,4,4,4">
                                 <Hyperlink NavigateUri="{Binding Link}" RequestNavigate="Hyperlink_RequestNavigate">
@@ -58,20 +50,37 @@
                                         x:Name="Link"
                                         Width="Auto"
                                         FontSize="18"
-                                        Text="{Binding Link}" />
+                                        Text="{Binding Link}" TextWrapping="WrapWithOverflow" />
                                 </Hyperlink>
                             </TextBlock>
 
-                            <TextBlock
-                                x:Name="UserName"
-                                Grid.Row="0"
-                                Width="Auto"
-                                Margin="4,4,4,4"
-                                HorizontalAlignment="Left"
-                                d:Text="DummyName"
-                                FontSize="12"
-                                FontWeight="Bold"
-                                Text="{Binding UserName}" />
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="UserName"
+                                    Grid.Column="0"
+                                    Width="Auto"
+                                    Margin="4,4,4,4"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    d:Text="DummyName"
+                                    FontSize="12"
+                                    FontWeight="Bold"
+                                    Text="{Binding UserName}" />
+                                <TextBlock
+                                    x:Name="ChatTime"
+                                    Grid.Column="1"
+                                    Margin="4,0,6,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    d:Text="DummyTime"
+                                    FontSize="10"
+                                    Text="{Binding ChatTime}" />
+
+                            </Grid>
                         </Grid>
                     </materialDesign:Card>
 
@@ -88,7 +97,8 @@
                     <materialDesign:Card
                         Grid.RowSpan="2"
                         Margin="2,2,2,2"
-                        UniformCornerRadius="5" Background="#FFC3F69D">
+                        Background="#FFC3F69D"
+                        UniformCornerRadius="5">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -108,14 +118,14 @@
                                 Width="Auto"
                                 Margin="14,4,4,4"
                                 FontSize="18"
-                                Text="{Binding Message}" />
+                                Text="{Binding Message}" TextWrapping="WrapWithOverflow" />
 
                             <TextBlock Grid.Row="1" Margin="14,4,4,4">
                                 <Hyperlink NavigateUri="{Binding Link}" RequestNavigate="Hyperlink_RequestNavigate">
                                     <TextBlock
                                         Width="Auto"
                                         FontSize="18"
-                                        Text="{Binding Link}" />
+                                        Text="{Binding Link}" TextWrapping="WrapWithOverflow" />
                                 </Hyperlink>
                             </TextBlock>
                         </Grid>

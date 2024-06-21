@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SyncRoomChatToolV2": {
+      "commandName": "Project",
+      "commandLineArgs": "/demo"
+    }
+  }
+}

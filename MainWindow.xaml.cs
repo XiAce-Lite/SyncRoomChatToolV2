@@ -25,8 +25,8 @@ namespace SyncRoomChatToolV2
     {
         private readonly MainWindowViewModel MainVM = new();
 
-        string yourName = "";
-
+        private string yourName = "";
+        
         //ルートエレメントとStudioエレメントのスコープを上げてみる。
         AutomationElement? rootElement = null;
         AutomationElement? studio = null;
@@ -418,7 +418,7 @@ namespace SyncRoomChatToolV2
         {
             //前のバージョンのプロパティを引き継ぐぜ。
             Settings.Default.Upgrade();
-
+                       
             InitializeComponent();
 
             //100ms以下は流石に速すぎると思うの。
@@ -858,18 +858,25 @@ namespace SyncRoomChatToolV2
                                         url = UriString;
                                     }
 
-                                    //todo: チャット風表示の検討中
+                                    //チャット風表示
                                     bool IsYourSelf = false;
                                     if (elName.Current.Name == yourName)
                                     {
                                         IsYourSelf = true;
                                     }
+
+                                    bool RandChat = IsYourSelf;
+                                    if (Settings.Default.DemoMode) {
+                                        var random = new Random();
+                                        RandChat = random.Next(2) == 1;
+                                    }
+                                    
                                     var item = new Chat
                                     {
                                         ChatTime = elTime.Current.Name,
                                         UserName = elName.Current.Name,
                                         Message = elMessage.Current.Name,
-                                        IsYourSelf = IsYourSelf,
+                                        IsYourSelf = RandChat,
                                         Link = url
                                     };
                                     MainVM.Chats.Add(item);

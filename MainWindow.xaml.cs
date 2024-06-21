@@ -24,6 +24,7 @@ namespace SyncRoomChatToolV2
     public partial class MainWindow : Window
     {
         private readonly MainWindowViewModel MainVM = new();
+        private readonly bool DemoMode = false;
 
         private string yourName = "";
         
@@ -502,52 +503,69 @@ namespace SyncRoomChatToolV2
             }
 
             string url = Settings.Default.VoiceVoxAddress;
-            if (url.Substring(url.Length - 1, 1) != "/")
+            if (!string.IsNullOrEmpty(url))
             {
-                url += "/";
-            }
-            url += "speakers";
-            var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-            var ret = client.Get();
-            if (ret != null)
-            {
-                //Jsonのデシリアライズ。VOICEVOXのStyleIdの一覧を作る。
-#nullable disable warnings
-                List<SpeakerFromAPI> VoiceVoxSpeakers = JsonConvert.DeserializeObject<List<SpeakerFromAPI>>(ret.ToString());
-
-                foreach (SpeakerFromAPI speaker in VoiceVoxSpeakers)
+                if (url.Substring(url.Length - 1, 1) != "/")
                 {
-                    foreach (StyleFromAPI st in speaker.Styles)
+                    url += "/";
+                }
+                url += "speakers";
+                var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                var ret = client.Get();
+                if (ret != null)
+                {
+                    //Jsonのデシリアライズ。VOICEVOXのStyleIdの一覧を作る。
+#nullable disable warnings
+                    List<SpeakerFromAPI> VoiceVoxSpeakers = JsonConvert.DeserializeObject<List<SpeakerFromAPI>>(ret.ToString());
+
+                    foreach (SpeakerFromAPI speaker in VoiceVoxSpeakers)
                     {
-                        Speaker addLine = new()
+                        foreach (StyleFromAPI st in speaker.Styles)
                         {
-                            StyleId = st.Id
-                        };
+                            Speaker addLine = new()
+                            {
+                                StyleId = st.Id
+                            };
 
-                        //ホントはSyncRoomのユーザ用のClassだけど、Voiceの一覧にも流用
-                        //ホントは自分のIDとボイス名だけでもいい気がするんだけど、そのマッチは面倒だったので。
-                        Speaker addVoice = new()
-                        {
-                            UserName = $"{speaker.Name}({st.Name})",
-                            StyleId = addLine.StyleId
-                        };
+                            //ホントはSyncRoomのユーザ用のClassだけど、Voiceの一覧にも流用
+                            //ホントは自分のIDとボイス名だけでもいい気がするんだけど、そのマッチは面倒だったので。
+                            Speaker addVoice = new()
+                            {
+                                UserName = $"{speaker.Name}({st.Name})",
+                                StyleId = addLine.StyleId
+                            };
 
-                        VoiceLists.Add(addVoice);
-                        StyleDef.Add(addLine);
+                            VoiceLists.Add(addVoice);
+                            StyleDef.Add(addLine);
+                        }
+                    }
+#nullable restore
+                    /* autoCompListが使えるかも分からんし、一旦コメントアウト */
+                    VoiceLists.Sort((a, b) => a.StyleId - b.StyleId);
+                    foreach (Speaker st in VoiceLists)
+                    {
+                        // 候補リストに項目を追加（初期設定）
+                        ChatInputCombo.Items.Add($"/{st.StyleId} {st.UserName} にボイス変更");
+                    }
+                    ChatInputCombo.Items.Add("/p0.4 最小スピード");
+                    ChatInputCombo.Items.Add("/p1.0 標準スピード");
+                    ChatInputCombo.Items.Add("/p1.8 最大スピード");
+                    ChatInputCombo.Items.Add("/s スピーチのトグル");
+                }
+            }
+
+            //デモモードの取得
+            string[] args = Environment.GetCommandLineArgs();
+            foreach (var arg in args)
+            {
+                if (arg != null)
+                {
+                    if (arg == "/demo")
+                    {
+                        DemoMode = true;
+                        break;
                     }
                 }
-#nullable restore
-                /* autoCompListが使えるかも分からんし、一旦コメントアウト */
-                VoiceLists.Sort((a, b) => a.StyleId - b.StyleId);
-                foreach (Speaker st in VoiceLists)
-                {
-                    // 候補リストに項目を追加（初期設定）
-                    ChatInputCombo.Items.Add($"/{st.StyleId} {st.UserName} にボイス変更");
-                }
-                ChatInputCombo.Items.Add("/p0.4 最小スピード");
-                ChatInputCombo.Items.Add("/p1.0 標準スピード");
-                ChatInputCombo.Items.Add("/p1.8 最大スピード");
-                ChatInputCombo.Items.Add("/s スピーチのトグル");
             }
 
             ContentRendered += MainWindow_ContentRendered;
@@ -866,8 +884,10 @@ namespace SyncRoomChatToolV2
                                     }
 
                                     bool RandChat = IsYourSelf;
-                                    if (Settings.Default.DemoMode) {
+
+                                    if (DemoMode) {
                                         var random = new Random();
+                                        
                                         RandChat = random.Next(2) == 1;
                                     }
                                     

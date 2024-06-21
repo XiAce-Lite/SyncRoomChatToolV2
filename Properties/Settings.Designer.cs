@@ -202,17 +202,5 @@ namespace SyncRoomChatToolV2.Properties {
                 this["AccessToken"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool DemoMode {
-            get {
-                return ((bool)(this["DemoMode"]));
-            }
-            set {
-                this["DemoMode"] = value;
-            }
-        }
     }
 }

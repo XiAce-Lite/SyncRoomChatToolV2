@@ -10,7 +10,19 @@ namespace SyncRoomChatToolV2.ModelView
         private string _Time = "";
         private string _Message = "";
         private string _Link = "";
+        private bool _IsLink = false;
         private bool _IsYourSelf = false;
+
+        public Chat() {
+            if (_Link != null)
+            {
+                _IsLink = false;
+            }
+            else
+            {
+                _IsLink = true;
+            }
+        }
 
         public string UserName
         {
@@ -45,6 +57,16 @@ namespace SyncRoomChatToolV2.ModelView
         public bool IsNotYourSelf
         {
             get { return !_IsYourSelf; }
+        }
+
+        public bool IsLink
+        {
+            get { return _IsLink; }
+        }
+
+        public bool IsNotLink
+        {
+            get { return !_IsLink; }
         }
 
         public ObservableCollection<Chat>? Children

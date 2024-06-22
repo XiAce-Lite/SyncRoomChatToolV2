@@ -37,22 +37,33 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
+
                             <TextBlock
                                 Grid.Row="1"
-                                Width="Auto"
                                 Margin="14,4,4,4"
-                                FontSize="18"
-                                Text="{Binding Message}" TextWrapping="WrapWithOverflow" />
+                                Visibility="{Binding IsLink, Converter={StaticResource BooleanToVisibilityConverter}}">
 
-                            <TextBlock Grid.Row="1" Margin="14,4,4,4">
                                 <Hyperlink NavigateUri="{Binding Link}" RequestNavigate="Hyperlink_RequestNavigate">
                                     <TextBlock
                                         x:Name="Link"
                                         Width="Auto"
+                                        d:Text="DummyLink"
                                         FontSize="18"
-                                        Text="{Binding Link}" TextWrapping="WrapWithOverflow" />
+                                        Text="{Binding Link}"
+                                        TextWrapping="WrapWithOverflow" />
                                 </Hyperlink>
                             </TextBlock>
+
+                            <TextBox
+                                Grid.Row="1"
+                                Width="Auto"
+                                Margin="14,4,4,4"
+                                d:Text="DummyMessage"
+                                FontSize="18"
+                                IsReadOnly="True"
+                                Text="{Binding Message}"
+                                TextWrapping="WrapWithOverflow"
+                                Visibility="{Binding IsNotLink, Converter={StaticResource BooleanToVisibilityConverter}}" BorderThickness="0,0,0,0" />
 
                             <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
@@ -113,21 +124,32 @@
                                 d:Text="DummyTime"
                                 FontSize="10"
                                 Text="{Binding ChatTime}" />
+
                             <TextBlock
                                 Grid.Row="1"
-                                Width="Auto"
                                 Margin="14,4,4,4"
-                                FontSize="18"
-                                Text="{Binding Message}" TextWrapping="WrapWithOverflow" />
-
-                            <TextBlock Grid.Row="1" Margin="14,4,4,4">
+                                Visibility="{Binding IsLink, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <Hyperlink NavigateUri="{Binding Link}" RequestNavigate="Hyperlink_RequestNavigate">
                                     <TextBlock
                                         Width="Auto"
+                                        d:Text="DummyLink"
                                         FontSize="18"
-                                        Text="{Binding Link}" TextWrapping="WrapWithOverflow" />
+                                        Text="{Binding Link}"
+                                        TextWrapping="WrapWithOverflow" />
                                 </Hyperlink>
                             </TextBlock>
+
+                            <TextBox
+                                Grid.Row="1"
+                                Width="Auto"
+                                Margin="14,4,4,4"
+                                d:Text="DummyMessage"
+                                BorderThickness="0"
+                                FontSize="18"
+                                IsReadOnly="True"
+                                Text="{Binding Message}"
+                                TextWrapping="WrapWithOverflow"
+                                Visibility="{Binding IsNotLink, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </Grid>
                     </materialDesign:Card>
 

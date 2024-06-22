@@ -480,77 +480,80 @@ namespace SyncRoomChatToolV2
             TargetProcess tp = new("run");
             if (!string.IsNullOrEmpty(Settings.Default.VoiceVoxPath))
             {
-                if (tp.IsAlive == false)
+                if (Path.Exists(Settings.Default.VoiceVoxPath))
                 {
-                    try
+                    if (tp.IsAlive == false)
                     {
-                        //自動起動をトライするが、失敗したって平気さ。知らねぇよ。
-                        ProcessStartInfo processStartInfo = new()
+                        try
                         {
-                            FileName = Settings.Default.VoiceVoxPath,
-                            WindowStyle = ProcessWindowStyle.Hidden
-                        };
-                        Process.Start(processStartInfo);
-                    }
-                    catch
-                    {
-                        SpeechSynthesizer synth = new();
-                        synth.SelectVoice("Microsoft Haruka Desktop");
-                        synth.Speak($"エラーが発生しています。VOICEVOXの自動起動に失敗しました。");
-                        System.Windows.Application.Current.Shutdown();
-                    }
-                }
-            }
-
-            string url = Settings.Default.VoiceVoxAddress;
-            if (!string.IsNullOrEmpty(url))
-            {
-                if (url.Substring(url.Length - 1, 1) != "/")
-                {
-                    url += "/";
-                }
-                url += "speakers";
-                var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-                var ret = client.Get();
-                if (ret != null)
-                {
-                    //Jsonのデシリアライズ。VOICEVOXのStyleIdの一覧を作る。
-#nullable disable warnings
-                    List<SpeakerFromAPI> VoiceVoxSpeakers = JsonConvert.DeserializeObject<List<SpeakerFromAPI>>(ret.ToString());
-
-                    foreach (SpeakerFromAPI speaker in VoiceVoxSpeakers)
-                    {
-                        foreach (StyleFromAPI st in speaker.Styles)
+                            //自動起動をトライするが、失敗したって平気さ。知らねぇよ。
+                            ProcessStartInfo processStartInfo = new()
+                            {
+                                FileName = Settings.Default.VoiceVoxPath,
+                                WindowStyle = ProcessWindowStyle.Hidden
+                            };
+                            Process.Start(processStartInfo);
+                        }
+                        catch
                         {
-                            Speaker addLine = new()
-                            {
-                                StyleId = st.Id
-                            };
-
-                            //ホントはSyncRoomのユーザ用のClassだけど、Voiceの一覧にも流用
-                            //ホントは自分のIDとボイス名だけでもいい気がするんだけど、そのマッチは面倒だったので。
-                            Speaker addVoice = new()
-                            {
-                                UserName = $"{speaker.Name}({st.Name})",
-                                StyleId = addLine.StyleId
-                            };
-
-                            VoiceLists.Add(addVoice);
-                            StyleDef.Add(addLine);
+                            SpeechSynthesizer synth = new();
+                            synth.SelectVoice("Microsoft Haruka Desktop");
+                            synth.Speak($"エラーが発生しています。VOICEVOXの自動起動に失敗しました。");
+                            System.Windows.Application.Current.Shutdown();
                         }
                     }
-#nullable restore
-                    /* autoCompListが使えるかも分からんし、一旦コメントアウト */
-                    VoiceLists.Sort((a, b) => a.StyleId - b.StyleId);
-                    foreach (Speaker st in VoiceLists)
+
+                    string url = Settings.Default.VoiceVoxAddress;
+                    if (!string.IsNullOrEmpty(url))
                     {
-                        // 候補リストに項目を追加（初期設定）
-                        ChatInputCombo.Items.Add($"/{st.StyleId} {st.UserName} にボイス変更");
+                        if (url.Substring(url.Length - 1, 1) != "/")
+                        {
+                            url += "/";
+                        }
+                        url += "speakers";
+                        var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                        var ret = client.Get();
+                        if (ret != null)
+                        {
+                            //Jsonのデシリアライズ。VOICEVOXのStyleIdの一覧を作る。
+#nullable disable warnings
+                            List<SpeakerFromAPI> VoiceVoxSpeakers = JsonConvert.DeserializeObject<List<SpeakerFromAPI>>(ret.ToString());
+
+                            foreach (SpeakerFromAPI speaker in VoiceVoxSpeakers)
+                            {
+                                foreach (StyleFromAPI st in speaker.Styles)
+                                {
+                                    Speaker addLine = new()
+                                    {
+                                        StyleId = st.Id
+                                    };
+
+                                    //ホントはSyncRoomのユーザ用のClassだけど、Voiceの一覧にも流用
+                                    //ホントは自分のIDとボイス名だけでもいい気がするんだけど、そのマッチは面倒だったので。
+                                    Speaker addVoice = new()
+                                    {
+                                        UserName = $"{speaker.Name}({st.Name})",
+                                        StyleId = addLine.StyleId
+                                    };
+
+                                    VoiceLists.Add(addVoice);
+                                    StyleDef.Add(addLine);
+                                }
+                            }
+#nullable restore
+                            /* autoCompListが使えるかも分からんし、一旦コメントアウト */
+                            VoiceLists.Sort((a, b) => a.StyleId - b.StyleId);
+                            foreach (Speaker st in VoiceLists)
+                            {
+                                // 候補リストに項目を追加（初期設定）
+                                ChatInputCombo.Items.Add($"/{st.StyleId} {st.UserName} にボイス変更");
+                            }
+                            ChatInputCombo.Items.Add("/p0.4 最小スピード");
+                            ChatInputCombo.Items.Add("/p1.0 標準スピード");
+                            ChatInputCombo.Items.Add("/p1.8 最大スピード");
+                            ChatInputCombo.Items.Add("/s スピーチのトグル");
+                        }
                     }
-                    ChatInputCombo.Items.Add("/p0.4 最小スピード");
-                    ChatInputCombo.Items.Add("/p1.0 標準スピード");
-                    ChatInputCombo.Items.Add("/p1.8 最大スピード");
-                    ChatInputCombo.Items.Add("/s スピーチのトグル");
                 }
             }
 

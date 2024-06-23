@@ -112,6 +112,10 @@
                             <RowDefinition Height="32" MinHeight="32" />
                         </Grid.RowDefinitions>
 
+                        <Grid.LayoutTransform>
+                            <ScaleTransform CenterX="0" CenterY="0" ScaleX="{Binding ElementName=uiScaleSlider, Path=Value}" ScaleY="{Binding ElementName=uiScaleSlider, Path=Value}" />
+                        </Grid.LayoutTransform>
+
                         <ListView
                             x:Name="ChatViewYourSelf"
                             Grid.Row="0"
@@ -196,6 +200,12 @@
                             IsEditable="True"
                             KeyDown="ChatInputCombo_KeyDown" />
 
+                        <Slider
+                            x:Name="uiScaleSlider"
+                            Maximum="2.0"
+                            Minimum="0.6"
+                            Visibility="Hidden"
+                            Value="1" />
                     </Grid>
 
                 </Border>

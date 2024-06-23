@@ -27,10 +27,12 @@ namespace SyncRoomChatToolV2
         private readonly bool DemoMode = false;
 
         private string yourName = "";
-        
-        //ルートエレメントとStudioエレメントのスコープを上げてみる。
-        AutomationElement? rootElement = null;
+
+        //チャット入力時にも必要なので
+        //webAreaとStudioエレメントのスコープを上げてみる。
+        //appエレメントがControlじゃないので取れなかっ（多分やり方あるんだろうけど。RootWebAreaの方が上位なんだよなぁ）
         AutomationElement? studio = null;
+        AutomationElement? webArea = null;
 
         [GeneratedRegex("https?://")]
         private static partial Regex httpReg();
@@ -228,6 +230,7 @@ namespace SyncRoomChatToolV2
             {
                 UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
             }
+            //ランダムここまで
 
             //行頭のコマンド有無のチェック。スタイル指定。
             match = styleReg().Match(Message);
@@ -310,14 +313,12 @@ namespace SyncRoomChatToolV2
             match = handClap1Reg().Match(Message);
             if (match.Success)
             {
-                Lang = 0;
                 Message = Message.Replace(match.ToString(), "、パチパチパチ");
             }
             //8888対応
             match = handClap2Reg().Match(Message);
             if (match.Success)
             {
-                Lang = 0;
                 Message = Message.Replace(match.ToString(), "、パチ");
             }
 
@@ -325,7 +326,6 @@ namespace SyncRoomChatToolV2
             match = laugh1Reg().Match(Message);
             if (match.Success)
             {
-                Lang = 0;
                 Message = Message.Replace(match.ToString(), "、ふふっ");
             }
 
@@ -333,7 +333,6 @@ namespace SyncRoomChatToolV2
             match = laugh2Reg().Match(Message);
             if (match.Success)
             {
-                Lang = 0;
                 Message = Message.Replace(match.ToString(), "、ふふっ");
             }
 
@@ -348,6 +347,8 @@ namespace SyncRoomChatToolV2
             if (Lang == 1)
             {
                 synth.SelectVoice("Microsoft Zira Desktop");
+                synth.Speak(Message);
+                return;
             }
 
             if ((Settings.Default.UseVoiceVox == false))
@@ -620,6 +621,8 @@ namespace SyncRoomChatToolV2
 
         async Task GetChat()
         {
+            AutomationElement? rootElement = null;
+
             string msg = "読み上げちゃん起動中…";
             bool firstFlg = true;
 
@@ -662,6 +665,10 @@ namespace SyncRoomChatToolV2
                         msg = "RootElement Is Null.";
                         continue;
                     }
+
+                    webArea = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "RootWebArea"));
+                    if (webArea is null) { continue; }
 
                     //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
                     studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
@@ -735,7 +742,11 @@ namespace SyncRoomChatToolV2
 
                         TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
                         AutomationElement chat = twChat.GetFirstChild(studio);
-                        if (chat is null) { continue; }
+                        if (chat is null) {
+                            twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
+                            chat = twChat.GetFirstChild(webArea);
+                            if (chat is null) { continue; }
+                        }
 
                         //非常にダサいがメインループの外で一回チャットの最終行を取得し、oldMessageにぶっ込む。
                         AutomationElement chatList1 = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
@@ -971,7 +982,11 @@ namespace SyncRoomChatToolV2
 
             TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
             AutomationElement chat = twChat.GetFirstChild(studio);
-            if (chat is null) { return; }
+            if (chat is null) {
+                twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
+                chat = twChat.GetFirstChild(webArea);
+                if (chat is null) { return; }
+            }
 
             TreeWalker twEdit = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
             AutomationElement EditBox1 = twEdit.GetFirstChild(chat);
@@ -1033,6 +1048,15 @@ namespace SyncRoomChatToolV2
                 {
                     ChatViewYourSelf?.ScrollIntoView(ChatViewYourSelf.Items[^1]);
                 }
+            }
+        }
+
+        protected override void OnPreviewMouseWheel(MouseWheelEventArgs args)
+        {
+            base.OnPreviewMouseWheel(args);
+            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+            {
+                uiScaleSlider.Value += (args.Delta > 0) ? 0.1 : -0.1;
             }
         }
     }

@@ -626,16 +626,17 @@ namespace SyncRoomChatToolV2
             string msg = "読み上げちゃん起動中…";
             bool firstFlg = true;
 
+            //MainVM.Info.ChatLog = "";
+            MainVM.Chats.Clear();
+
             //外のループ。プロセス確認用。
             while (true)
             {
                 TargetProcess targetProc = new("SYNCROOM2");
 
                 MainVM.Info.SysInfo = msg;
-                //MainVM.Info.ChatLog = "";
-                MainVM.Chats.Clear();
 
-                await Task.Delay(1000);
+                await Task.Delay(3000);
 
                 if (targetProc.IsAlive)
                 {
@@ -668,7 +669,10 @@ namespace SyncRoomChatToolV2
 
                     webArea = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                      new PropertyCondition(AutomationElement.AutomationIdProperty, "RootWebArea"));
-                    if (webArea is null) { continue; }
+                    if (webArea is null) {
+                        msg = "RootWebArea Is Null.";
+                        continue; 
+                    }
 
                     //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
                     studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,

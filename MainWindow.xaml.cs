@@ -926,7 +926,8 @@ namespace SyncRoomChatToolV2
                                 UserName = elName.Current.Name,
                                 Message = elMessage.Current.Name,
                                 IsYourSelf = RandChat,
-                                Link = url
+                                Link = url,
+                                IsLink = IsLink
                             };
                             MainVM.Chats.Add(item);
                             //

@@ -14,14 +14,7 @@ namespace SyncRoomChatToolV2.ModelView
         private bool _IsYourSelf = false;
 
         public Chat() {
-            if (_Link != null)
-            {
-                _IsLink = false;
-            }
-            else
-            {
-                _IsLink = true;
-            }
+
         }
 
         public string UserName
@@ -62,6 +55,7 @@ namespace SyncRoomChatToolV2.ModelView
         public bool IsLink
         {
             get { return _IsLink; }
+            set { _IsLink = value; OnPropertyChanged(nameof(IsLink)); }
         }
 
         public bool IsNotLink

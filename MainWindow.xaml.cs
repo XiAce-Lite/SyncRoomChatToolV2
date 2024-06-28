@@ -636,90 +636,180 @@ namespace SyncRoomChatToolV2
 
                 MainVM.Info.SysInfo = msg;
 
-                await Task.Delay(3000);
+                await Task.Delay(2000);
 
-                if (targetProc.IsAlive)
+                if (targetProc.IsAlive == false)
                 {
-                    msg = "SyncRoomが起動されています。";
+                    msg = $"No SyncRoom Process. {DateTime.Now}";
+                    continue;
+                }
 
-                    //タイトル検索なので、他のプロセスでも"SYNCROOM"が入ってると…
-                    Process[] procs = Tools.GetProcessesByWindowTitle("SYNCROOM");
-                    if (procs.Length == 0)
+                msg = "SyncRoomが起動されています。";
+
+                //タイトル検索なので、他のプロセスでも"SYNCROOM"が入ってると…
+                Process[] procs = Tools.GetProcessesByWindowTitle("SYNCROOM");
+                if (procs.Length == 0)
+                {
+                    msg = $"No 'SYNCROOM' Title Window. {DateTime.Now}";
+                    continue;
+                }
+
+                foreach (Process proc in procs)
+                {
+                    if (proc.MainWindowTitle == "SYNCROOM")
                     {
-                        msg = "SyncRoomが立ち上がってません。No 'SYNCROOM' Title Window.";
-                        continue;
+                        //MainWindotTitle が "SYNCROOM"なプロセス＝ターゲットのプロセスは、SYNCROOM2.exeが中で作った別プロセスのようで
+                        //こんな面倒なやり方をしてみている。
+                        rootElement = AutomationElement.FromHandle(proc.MainWindowHandle);
+                        break;
                     }
+                }
 
-                    foreach (Process proc in procs)
+                if (rootElement is null)
+                {
+                    msg = "RootElement Is Null.";
+                    continue;
+                }
+
+                webArea = rootElement.FindFirst(TreeScope.Children | TreeScope.Descendants,
+                                                                    new PropertyCondition(AutomationElement.AutomationIdProperty, "RootWebArea"));
+                if (webArea is null) {
+                    msg = "RootWebArea Is Null.";
+                    continue; 
+                }
+
+                //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
+                studio = webArea.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                    new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
+
+                MainVM.Members?.Clear();
+
+                if (studio is null)
+                {
+                    msg = "studio is null.";
+                    continue;
+                }
+
+                string oldMessage = "";
+
+                TreeWalker twName = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "name"));
+                TreeWalker twTime = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "time"));
+                TreeWalker twMessage = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "message"));
+                TreeWalker twPart = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "part"));
+                TreeWalker twRack = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "rack"));
+                TreeWalker twDivision = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "division"));
+                TreeWalker twAvatar = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "avatar"));
+
+                TreeWalker twControl = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
+                TreeWalker twImage = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Image));
+
+                msg = "studio exist.";
+
+                //自分自身をセットする。
+                AutomationElement rack = twRack.GetFirstChild(studio);
+                AutomationElement? yourSelf = null;
+                if (rack is not null)
+                {
+                    yourSelf = twDivision.GetFirstChild(rack);
+                    if (yourSelf is not null)
                     {
-                        if (proc.MainWindowTitle == "SYNCROOM")
+                        //名前と演奏パートの取得
+                        var tempName = twName.GetFirstChild(yourSelf);
+                        if (tempName is null) { break; }
+                        var tempNameText = twControl.GetFirstChild(tempName);
+                        yourName = tempNameText.Current.Name;
+
+                        var tempPart = twPart.GetFirstChild(yourSelf);
+                        if (tempPart is null) { break; }
+                        var tempPartText = twControl.GetFirstChild(tempPart);
+
+                        var tempAvatar = twAvatar.GetFirstChild(yourSelf);
+                        if (tempAvatar is null) { break; }
+                        var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
+                        //何とかキャプチャしてアイコン取った。
+                        BitmapSource? bitmapSource = CaptureAndConvert(tempAvatarImage);
+
+                        Member item = new();
+                        if (tempNameText.Current.Name != null)
                         {
-                            //MainWindotTitle が "SYNCROOM"なプロセス＝ターゲットのプロセスは、SYNCROOM2.exeが中で作った別プロセスのようで
-                            //こんな面倒なやり方をしてみている。
-                            rootElement = AutomationElement.FromHandle(proc.MainWindowHandle);
-                            break;
+                            item.MemberName = tempNameText.Current.Name;
                         }
-                    }
-
-                    if (rootElement is null)
-                    {
-                        msg = "RootElement Is Null.";
-                        continue;
-                    }
-
-                    webArea = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
-                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "RootWebArea"));
-                    if (webArea is null) {
-                        msg = "RootWebArea Is Null.";
-                        continue; 
-                    }
-
-                    //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
-                    studio = rootElement.FindFirst(TreeScope.Element | TreeScope.Descendants,
-                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
-
-                    string oldMessage = "";
-
-                    TreeWalker twName = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "name"));
-                    TreeWalker twTime = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "time"));
-                    TreeWalker twMessage = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "message"));
-                    TreeWalker twPart = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "part"));
-                    TreeWalker twRack = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "rack"));
-                    TreeWalker twDivision = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "division"));
-                    TreeWalker twAvatar = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "avatar"));
-
-                    TreeWalker twControl = new(new PropertyCondition(AutomationElement.IsControlElementProperty, true));
-                    TreeWalker twImage = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Image));
-
-                    MainVM.Members?.Clear();
-
-                    if (studio is not null)
-                    {
-                        msg = "studio exist.";
-
-                        //自分自身をセットする。
-                        AutomationElement rack = twRack.GetFirstChild(studio);
-                        AutomationElement? yourSelf = null;
-                        if (rack is not null)
+                        if (tempPartText.Current.Name != null)
                         {
-                            yourSelf = twDivision.GetFirstChild(rack);
-                            if (yourSelf is not null)
+                            item.MemberPart = tempPartText.Current.Name;
+                        }
+
+                        if (bitmapSource is not null)
+                        {
+                            item.MemberImage = new()
                             {
-                                //名前と演奏パートの取得
-                                var tempName = twName.GetFirstChild(yourSelf);
+                                Source = bitmapSource
+                            };
+                        }
+#nullable disable warnings
+                        MainVM.Members.Add(item);
+#nullable restore
+                    }
+                }
+
+                TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
+                AutomationElement chat = twChat.GetFirstChild(studio);
+                if (chat is null)
+                {
+                    twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
+                    chat = twChat.GetFirstChild(webArea);
+                    if (chat is null) { continue; }
+                }
+
+                //非常にダサいがメインループの外で一回チャットの最終行を取得し、oldMessageにぶっ込む。
+                AutomationElement chatList1 = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                    new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
+                AutomationElement elMessage1 = twMessage.GetLastChild(chatList1);
+                if (elMessage1 is null)
+                {
+                    firstFlg = true;
+                }
+                else
+                {
+                    elMessage1 = twControl.GetLastChild(elMessage1);
+                    if (elMessage1 is not null) { oldMessage = elMessage1.Current.Name; }
+                    firstFlg = string.IsNullOrEmpty(oldMessage);
+                }
+
+                //メインのループ。チャット取得用。
+                while (true)
+                {
+                    MainVM.Info.SysInfo = msg;
+
+                    await Task.Delay((int)Settings.Default.WaitValue);
+
+                    try
+                    {
+                        //メンバーの削除＆追加（毎回やる割には問題なさそう）
+                        if (yourSelf is not null)
+                        {
+#nullable disable warnings
+                            var roomMember = twDivision.GetNextSibling(yourSelf);
+
+                            for (int i = (MainVM.Members.Count) - (1); i >= 1; i--)
+                            {
+                                MainVM.Members.RemoveAt(i);
+                            }
+
+                            while (roomMember is not null)
+                            {
+                                var tempName = twName.GetFirstChild(roomMember);
                                 if (tempName is null) { break; }
-                                var tempNameText = twControl.GetFirstChild(tempName);
-                                yourName = tempNameText.Current.Name;
-
-                                var tempPart = twPart.GetFirstChild(yourSelf);
+                                var tempPart = twPart.GetFirstChild(roomMember);
                                 if (tempPart is null) { break; }
+                                var tempNameText = twControl.GetFirstChild(tempName);
+                                if (tempNameText is null) { break; }
                                 var tempPartText = twControl.GetFirstChild(tempPart);
-
-                                var tempAvatar = twAvatar.GetFirstChild(yourSelf);
+                                if (tempPartText is null) { break; }
+                                var tempAvatar = twAvatar.GetFirstChild(roomMember);
                                 if (tempAvatar is null) { break; }
                                 var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
-                                //何とかキャプチャしてアイコン取った。
-                                BitmapSource? bitmapSource = CaptureAndConvert(tempAvatarImage);
+                                BitmapSource bitmapSource = CaptureAndConvert(tempAvatarImage);
 
                                 Member item = new();
                                 if (tempNameText.Current.Name != null)
@@ -730,246 +820,156 @@ namespace SyncRoomChatToolV2
                                 {
                                     item.MemberPart = tempPartText.Current.Name;
                                 }
-
-                                if (bitmapSource is not null)
+                                item.MemberImage = new()
                                 {
-                                    item.MemberImage = new()
-                                    {
-                                        Source = bitmapSource
-                                    };
-                                }
-#nullable disable warnings
+                                    Source = bitmapSource
+                                };
+
                                 MainVM.Members.Add(item);
 #nullable restore
+                                roomMember = twDivision.GetNextSibling(roomMember);
                             }
-                        }
-
-                        TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
-                        AutomationElement chat = twChat.GetFirstChild(studio);
-                        if (chat is null) {
-                            twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
-                            chat = twChat.GetFirstChild(webArea);
-                            if (chat is null) { continue; }
-                        }
-
-                        //非常にダサいがメインループの外で一回チャットの最終行を取得し、oldMessageにぶっ込む。
-                        AutomationElement chatList1 = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
-                                                                            new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
-                        AutomationElement elMessage1 = twMessage.GetLastChild(chatList1);
-                        if (elMessage1 is null) {
-                            firstFlg = true;
                         }
                         else
                         {
-                            elMessage1 = twControl.GetLastChild(elMessage1);
-                            if (elMessage1 is not null) { oldMessage = elMessage1.Current.Name; }
-                            firstFlg = string.IsNullOrEmpty(oldMessage);
+                            break;
                         }
 
-                        //メインのループ。チャット取得用。
-                        while (true)
+                        //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
+                        AutomationElement chatList = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                                                                            new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
+
+                        if (chatList is null)
                         {
-                            MainVM.Info.SysInfo = msg;
+                            msg = "chatList is null.";
+                            break;
+                        }
 
-                            await Task.Delay((int)Settings.Default.WaitValue);
+                        msg = "チャット入力待ち";
+                        AutomationElement elName = twName.GetLastChild(chatList);
+                        if (elName is null)
+                        {
+                            continue;
+                        }
 
-                            try
+                        elName = twControl.GetLastChild(elName);
+                        if (elName is null) { continue; }
+
+                        AutomationElement elTime = twTime.GetLastChild(chatList);
+                        if (elTime is null) { continue; }
+                        elTime = twControl.GetLastChild(elTime);
+                        if (elTime is null) { continue; }
+
+
+                        AutomationElement elMessage = twMessage.GetLastChild(chatList);
+                        if (elMessage is null) { continue; }
+                        elMessage = twControl.GetLastChild(elMessage);
+                        if (elMessage is null) { continue; }
+
+
+                        //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
+                        string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
+
+                        if ((elMessage.Current.Name != oldMessage) || (firstFlg))
+                        {
+                            firstFlg = false;
+                            //MainVM.Info.ChatLog += Environment.NewLine + chatLine;
+
+                            string Message = elMessage.Current.Name;
+
+                            //リンク自動オープン時の処理。
+                            bool IsLink = false;
+                            string url = "";
+                            Match match;
+                            match = httpReg().Match(Message);
+                            if (match.Success)
                             {
-                                //メンバーの削除＆追加（毎回やる割には問題なさそう）
-                                if (yourSelf is not null)
+                                IsLink = true;
+                                string UriString = Message[match.Index..];
+                                Uri u = new(UriString);
+
+                                Message = "リンクが張られました";
+
+                                if (Settings.Default.OpenLink)
                                 {
-#nullable disable warnings
-                                    var roomMember = twDivision.GetNextSibling(yourSelf);
-
-                                    for (int i = (MainVM.Members.Count) - (1); i >= 1; i--)
+                                    if (UriString != LastURL)
                                     {
-                                        MainVM.Members.RemoveAt(i);
-                                    }
-
-                                    while (roomMember is not null)
-                                    {
-                                        var tempName = twName.GetFirstChild(roomMember);
-                                        if (tempName is null) { break; }
-                                        var tempPart = twPart.GetFirstChild(roomMember);
-                                        if (tempPart is null) { break; }
-                                        var tempNameText = twControl.GetFirstChild(tempName);
-                                        if (tempNameText is null) { break; }
-                                        var tempPartText = twControl.GetFirstChild(tempPart);
-                                        if (tempPartText is null) { break; }
-                                        var tempAvatar = twAvatar.GetFirstChild(roomMember);
-                                        if (tempAvatar is null) { break; }
-                                        var tempAvatarImage = twImage.GetFirstChild(tempAvatar);
-                                        BitmapSource bitmapSource = CaptureAndConvert(tempAvatarImage);
-
-                                        Member item = new();
-                                        if (tempNameText.Current.Name != null)
+                                        if (u.IsAbsoluteUri)
                                         {
-                                            item.MemberName = tempNameText.Current.Name;
-                                        }
-                                        if (tempPartText.Current.Name != null)
-                                        {
-                                            item.MemberPart = tempPartText.Current.Name;
-                                        }
-                                        item.MemberImage = new()
-                                        {
-                                            Source = bitmapSource
-                                        };
-
-                                        MainVM.Members.Add(item);
-#nullable restore
-                                        roomMember = twDivision.GetNextSibling(roomMember);
-                                    }
-                                }
-                                else
-                                {
-                                    break;
-                                }
-
-                                //chatListのAutomationIdを持つ要素の下に、divisionってAutomationIdを持つ要素群＝チャットの各行っつうか名前と時間とチャット内容が入っとる。
-                                AutomationElement chatList = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
-                                                                                    new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
-
-                                if (chatList is null)
-                                {
-                                    msg = "chatList is null.";
-                                    break;
-                                }
-
-                                msg = "チャット入力待ち";
-                                AutomationElement elName = twName.GetLastChild(chatList);
-                                if (elName is null) 
-                                {
-                                    continue; 
-                                }
-
-                                elName = twControl.GetLastChild(elName);
-                                if (elName is null){ continue; }
-
-                                AutomationElement elTime = twTime.GetLastChild(chatList);
-                                if (elTime is null) { continue; }
-                                elTime = twControl.GetLastChild(elTime);
-                                if (elTime is null) { continue; }
-
-
-                                AutomationElement elMessage = twMessage.GetLastChild(chatList);
-                                if (elMessage is null){ continue; }
-                                elMessage = twControl.GetLastChild(elMessage);
-                                if (elMessage is null) { continue; }
-
-
-                                //string chatLine = $"{elName.Current.Name} {elTime.Current.Name} {elMessage.Current.Name}";
-                                string chatLine = $"[{elTime.Current.Name}] {elMessage.Current.Name}";
-
-                                if ((elMessage.Current.Name != oldMessage) || (firstFlg))
-                                {
-                                    firstFlg = false;
-                                    //MainVM.Info.ChatLog += Environment.NewLine + chatLine;
-
-                                    string Message = elMessage.Current.Name;
-
-                                    //リンク自動オープン時の処理。
-                                    bool IsLink = false;
-                                    string url = "";
-                                    Match match;
-                                    match = httpReg().Match(Message);
-                                    if (match.Success)
-                                    {
-                                        IsLink = true;
-                                        string UriString = Message[match.Index..];
-                                        Uri u = new(UriString);
-
-                                        Message = "リンクが張られました";
-
-                                        if (Settings.Default.OpenLink)
-                                        {
-                                            if (UriString != LastURL)
-                                            {
-                                                if (u.IsAbsoluteUri)
-                                                {
-                                                    Tools.OpenUrl(UriString);
-                                                }
-                                            }
-                                        }
-                                        LastURL = UriString;
-                                        url = UriString;
-                                    }
-
-                                    //チャット風表示
-                                    bool IsYourSelf = false;
-                                    if (elName.Current.Name == yourName)
-                                    {
-                                        IsYourSelf = true;
-                                    }
-
-                                    bool RandChat = IsYourSelf;
-
-                                    if (DemoMode) {
-                                        var random = new Random();
-                                        
-                                        RandChat = random.Next(2) == 1;
-                                    }
-                                    
-                                    var item = new Chat
-                                    {
-                                        ChatTime = elTime.Current.Name,
-                                        UserName = elName.Current.Name,
-                                        Message = elMessage.Current.Name,
-                                        IsYourSelf = RandChat,
-                                        Link = url
-                                    };
-                                    MainVM.Chats.Add(item);
-                                    //
-
-                                    if (Settings.Default.CanSpeech)
-                                    {
-                                        if (IsLink)
-                                        {
-                                            oldMessage = elMessage.Current.Name;
-                                            msg = "リンクが張られました。";
-
-                                            //リンク固定ファイル再生時
-                                            if (!string.IsNullOrEmpty(Settings.Default.LinkWaveFilePath))
-                                            {
-                                                if (Path.Exists(Settings.Default.LinkWaveFilePath))
-                                                {
-                                                    var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
-                                                    var waveOut = new WaveOut();
-                                                    waveOut.Init(waveReader);
-                                                    waveOut.Play();
-                                                    while (waveOut.PlaybackState == PlaybackState.Playing)
-                                                    {
-                                                        await Task.Delay(50);
-                                                    }
-                                                    continue;
-                                                }
-                                            }
-                                        }
-                                        if (!string.IsNullOrEmpty(Message))
-                                        {
-                                            _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
+                                            Tools.OpenUrl(UriString);
                                         }
                                     }
                                 }
-                                oldMessage = elMessage.Current.Name;
-
-                                msg = "監視中…";
-                                MainVM.Info.SysInfo = msg;
+                                LastURL = UriString;
+                                url = UriString;
                             }
-                            catch (Exception e)
+
+                            //チャット風表示
+                            bool IsYourSelf = false;
+                            if (elName.Current.Name == yourName)
                             {
-                                msg = $"何かエラーです。[{e.Message}] ";
-                                break;
+                                IsYourSelf = true;
+                            }
+
+                            bool RandChat = IsYourSelf;
+
+                            if (DemoMode)
+                            {
+                                var random = new Random();
+
+                                RandChat = random.Next(2) == 1;
+                            }
+
+                            var item = new Chat
+                            {
+                                ChatTime = elTime.Current.Name,
+                                UserName = elName.Current.Name,
+                                Message = elMessage.Current.Name,
+                                IsYourSelf = RandChat,
+                                Link = url
+                            };
+                            MainVM.Chats.Add(item);
+                            //
+
+                            if (Settings.Default.CanSpeech)
+                            {
+                                if (IsLink)
+                                {
+                                    oldMessage = elMessage.Current.Name;
+                                    msg = "リンクが張られました。";
+
+                                    //リンク固定ファイル再生時
+                                    if (!string.IsNullOrEmpty(Settings.Default.LinkWaveFilePath))
+                                    {
+                                        if (Path.Exists(Settings.Default.LinkWaveFilePath))
+                                        {
+                                            var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
+                                            var waveOut = new WaveOut();
+                                            waveOut.Init(waveReader);
+                                            waveOut.Play();
+                                            while (waveOut.PlaybackState == PlaybackState.Playing)
+                                            {
+                                                await Task.Delay(50);
+                                            }
+                                            continue;
+                                        }
+                                    }
+                                }
+                                if (!string.IsNullOrEmpty(Message))
+                                {
+                                    _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
+                                }
                             }
                         }
+                        oldMessage = elMessage.Current.Name;
+
+                        msg = $"監視中… {DateTime.Now}";
                     }
-                    else
+                    catch (Exception e)
                     {
-                        msg = "入室してください。studio is null.";
+                        msg = $"何かエラーです。[{e.Message}] {DateTime.Now}";
+                        break;
                     }
-                }
-                else
-                {
-                    msg = $"SyncRoomが立ち上がってません。No Process. {DateTime.Now}";
                 }
             }
         }

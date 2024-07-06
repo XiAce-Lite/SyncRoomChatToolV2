@@ -8,7 +8,13 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWPF>True</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>SyncRoomChatToolV2.ico</ApplicationIcon>
+    <FileVersion>0.0.2.1</FileVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="SyncRoomChatToolV2.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MaterialDesignColors" Version="3.0.0" />
@@ -26,6 +32,13 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

@@ -25,7 +25,6 @@ namespace SyncRoomChatToolV2
     {
         private readonly MainWindowViewModel MainVM = new();
         private readonly bool DemoMode = false;
-
         private string yourName = "";
 
         //チャット入力時にも必要なので
@@ -420,7 +419,7 @@ namespace SyncRoomChatToolV2
         {
             //前のバージョンのプロパティを引き継ぐぜ。
             Settings.Default.Upgrade();
-                       
+
             InitializeComponent();
 
             //100ms以下は流石に速すぎると思うの。
@@ -597,7 +596,6 @@ namespace SyncRoomChatToolV2
 
         private void MainWindow_ContentRendered(object? sender, EventArgs e)
         {
-
             //Windowロケーションとサイズの復元
             Left = Settings.Default.WindowLocation.X;
             Top = Settings.Default.WindowLocation.Y;
@@ -611,12 +609,13 @@ namespace SyncRoomChatToolV2
             SplitGrid.ColumnDefinitions[0].Width = new GridLength(widthA, GridUnitType.Star);
             SplitGrid.ColumnDefinitions[2].Width = new GridLength(widthB, GridUnitType.Star);
 
-            _ = GetChat();
-        }
 
-        private void BtnExit_Click(object sender, RoutedEventArgs e)
-        {
-            System.Windows.Application.Current.Shutdown();
+            var fullname = typeof(App).Assembly.Location;
+            var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(fullname);
+            var ver = info.FileVersion;
+            Title = $"SyncRoom読み上げちゃん V2 ver {ver}";
+
+            _ = GetChat();
         }
 
         async Task GetChat()
@@ -673,9 +672,10 @@ namespace SyncRoomChatToolV2
 
                 webArea = rootElement.FindFirst(TreeScope.Children | TreeScope.Descendants,
                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "RootWebArea"));
-                if (webArea is null) {
+                if (webArea is null)
+                {
                     msg = "RootWebArea Is Null.";
-                    continue; 
+                    continue;
                 }
 
                 //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
@@ -975,6 +975,11 @@ namespace SyncRoomChatToolV2
             }
         }
 
+        private void BtnExit_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Application.Current.Shutdown();
+        }
+
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
             var settingsWindow = new SettingsWindow();
@@ -987,7 +992,8 @@ namespace SyncRoomChatToolV2
 
             TreeWalker twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "chat"));
             AutomationElement chat = twChat.GetFirstChild(studio);
-            if (chat is null) {
+            if (chat is null)
+            {
                 twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
                 chat = twChat.GetFirstChild(webArea);
                 if (chat is null) { return; }

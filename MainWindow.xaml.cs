@@ -1070,5 +1070,10 @@ namespace SyncRoomChatToolV2
                 uiScaleSlider.Value += (args.Delta > 0) ? 0.1 : -0.1;
             }
         }
+
+        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MenuToggleButton.IsChecked = false;
+        }
     }
 }

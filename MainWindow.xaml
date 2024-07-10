@@ -234,6 +234,7 @@
                             Orientation="Horizontal">
                             <CheckBox
                                 Padding="9"
+                                Click="MenuItem_Click"
                                 Content="最前面固定"
                                 FontWeight="DemiBold"
                                 Foreground="#FF3F51B5"
@@ -246,6 +247,7 @@
                             Orientation="Horizontal">
                             <CheckBox
                                 Padding="9"
+                                Click="MenuItem_Click"
                                 Content="リンク自動オープン"
                                 FontWeight="DemiBold"
                                 Foreground="#FF3F51B5"
@@ -258,6 +260,7 @@
                             Orientation="Horizontal">
                             <CheckBox
                                 Padding="9"
+                                Click="MenuItem_Click"
                                 Content="スピーチさせる"
                                 FontWeight="DemiBold"
                                 Foreground="#FF3F51B5"
@@ -270,6 +273,7 @@
                             Orientation="Horizontal">
                             <CheckBox
                                 Padding="9"
+                                Click="MenuItem_Click"
                                 Content="VOICEVOXを使う"
                                 FontWeight="DemiBold"
                                 Foreground="#FF3F51B5"

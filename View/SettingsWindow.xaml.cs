@@ -13,6 +13,7 @@ namespace SyncRoomChatToolV2.View
         {
             InitializeComponent();
             Closing += SettingsWindow_Closing;
+            this.Topmost = true;
         }
 
         private void SettingsWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)

@@ -358,6 +358,23 @@
                             AutomationProperties.Name="HamburgerToggleButton"
                             Style="{DynamicResource MaterialDesignHamburgerToggleButton}" />
                     </VirtualizingStackPanel>
+                    <VirtualizingStackPanel
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal"
+                        VirtualizingPanel.IsVirtualizing="true"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <Button
+                            x:Name="ExitButton"
+                            Height="21"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Right"
+                            Click="ExitButton_Click"
+                            Content="退室"
+                            FlowDirection="RightToLeft"
+                            FontSize="10"
+                            IsEnabled="{Binding Info.IsEntered, UpdateSourceTrigger=PropertyChanged}" />
+                    </VirtualizingStackPanel>
                 </DockPanel>
             </materialDesign:ColorZone>
         </materialDesign:DrawerHost>

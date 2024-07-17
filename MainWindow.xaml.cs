@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using SyncRoomChatToolV2.ModelView;
 using SyncRoomChatToolV2.Properties;
 using SyncRoomChatToolV2.View;
+using System;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Drawing;
@@ -631,6 +632,8 @@ namespace SyncRoomChatToolV2
             //外のループ。プロセス確認用。
             while (true)
             {
+                MainVM.Info.IsEntered = false;
+
                 TargetProcess targetProc = new("SYNCROOM2");
 
                 MainVM.Info.SysInfo = msg;
@@ -780,6 +783,7 @@ namespace SyncRoomChatToolV2
                 while (true)
                 {
                     MainVM.Info.SysInfo = msg;
+                    MainVM.Info.IsEntered = true;
 
                     await Task.Delay((int)Settings.Default.WaitValue);
 
@@ -1038,6 +1042,42 @@ namespace SyncRoomChatToolV2
 
                 ChatInputCombo.Text = "";
                 this.Activate();
+            }
+        }
+
+        private async void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (webArea is null) { return; }
+
+            TreeWalker twApp = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "app"));
+            AutomationElement app = twApp.GetFirstChild(webArea);
+            if (app is null) { return; }
+
+            TreeWalker twExit = new(new PropertyCondition(AutomationElement.ClassNameProperty, "exit-button"));
+            AutomationElement elExtBtn = twExit.GetFirstChild(app);
+            if (elExtBtn is null) { return; }
+
+            TreeWalker twButton = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
+            AutomationElement exitBtn = twButton.GetFirstChild(elExtBtn);
+            if (exitBtn is null) { return; }
+
+            if (exitBtn.GetCurrentPattern(ExpandCollapsePattern.Pattern) is ExpandCollapsePattern btn)
+            {
+                if (btn.Current.ExpandCollapseState == ExpandCollapseState.Collapsed)
+                {
+                    btn.Expand();
+                }
+                await Task.Delay(500);
+                TreeWalker twPrimary = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "primary-area"));
+                AutomationElement primaryArea = twPrimary.GetFirstChild(webArea); 
+                if (primaryArea is null) { return; }
+
+                AutomationElement exitBtn2 = twButton.GetFirstChild(primaryArea);
+
+                if (exitBtn2.GetCurrentPattern(InvokePattern.Pattern) is InvokePattern btn2)
+                {
+                    btn2.Invoke();
+                }
             }
         }
 

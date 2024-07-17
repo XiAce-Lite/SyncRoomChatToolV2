@@ -6,6 +6,7 @@ namespace SyncRoomChatToolV2.ModelView
     {
         private string sysInfo = "";
         //private string chatLog = "";
+        private bool isEntered = false;
 
         public string SysInfo
         {
@@ -19,6 +20,11 @@ namespace SyncRoomChatToolV2.ModelView
             set { chatLog = value; OnPropertyChanged(nameof(ChatLog)); }
         }
         */
+
+        public bool IsEntered { 
+            get => isEntered;
+            set { isEntered = value; OnPropertyChanged(nameof(IsEntered)); } 
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 

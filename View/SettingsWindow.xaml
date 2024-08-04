@@ -9,7 +9,7 @@
     xmlns:prop="clr-namespace:SyncRoomChatToolV2.Properties"
     Title="設定"
     Width="750"
-    Height="305"
+    Height="341"
     ResizeMode="NoResize"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
@@ -168,6 +168,12 @@
                         Style="{StaticResource MaterialDesign3.MaterialDesignDiscreteSlider}"
                         TickFrequency="0.1"
                         Value="{Binding Volume, Mode=TwoWay, Source={x:Static prop:Settings.Default}}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="連結申請受信でお知らせスピーチ" Margin="5" />
+                    <CheckBox Margin="30,0,0,0" IsChecked="{Binding SpeechWhenInvited, Mode=TwoWay, Source={x:Static prop:Settings.Default}, UpdateSourceTrigger=PropertyChanged}" />
+
                 </StackPanel>
 
             </StackPanel>

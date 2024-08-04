@@ -1,19 +1,21 @@
-﻿using NAudio.Wave;
+﻿using Microsoft.Toolkit.Uwp.Notifications;
+using NAudio.Wave;
 using Newtonsoft.Json;
 using SyncRoomChatToolV2.ModelView;
 using SyncRoomChatToolV2.Properties;
 using SyncRoomChatToolV2.View;
-using System;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
+using System.Security.Policy;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
@@ -779,6 +781,9 @@ namespace SyncRoomChatToolV2
                     firstFlg = string.IsNullOrEmpty(oldMessage);
                 }
 
+                //連結申請のフラグ。
+                bool invitationFlg = false;
+
                 //メインのループ。チャット取得用。
                 while (true)
                 {
@@ -789,6 +794,46 @@ namespace SyncRoomChatToolV2
 
                     try
                     {
+                        //連結チェック
+                        if (webArea is null) { continue; }
+
+                        TreeWalker twApp = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "app"));
+                        AutomationElement app = twApp.GetFirstChild(webArea);
+                        if (app is null) { continue; }
+
+                        TreeWalker twInvitations = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "room-invitations-length-back"));
+                        AutomationElement elInvitation = twInvitations.GetFirstChild(app);
+                        if (elInvitation is null) { invitationFlg = false; }
+
+                        if (invitationFlg == false)
+                        {
+                            if (elInvitation != null)
+                            {
+                                new ToastContentBuilder()
+                                    .AddText($"連結申請が届いてます。")
+                                    .Show();
+
+                                var item = new Chat
+                                {
+                                    ChatTime = DateTime.Now.ToString("G"),
+                                    UserName = "System",
+                                    Message = "連結申請が届いています。",
+                                    IsYourSelf = false,
+                                    Link = "",
+                                    IsLink = false
+                                };
+                                MainVM.Chats.Add(item);
+                                if (Settings.Default.CanSpeech)
+                                {
+                                    if (Settings.Default.SpeechWhenInvited)
+                                    {
+                                        _ = Task.Run(() => SpeechMessage(item.UserName, item.Message));
+                                    }
+                                }
+                                invitationFlg = true;
+                            }
+                        }
+
                         //メンバーの削除＆追加（毎回やる割には問題なさそう）
                         if (yourSelf is not null)
                         {
@@ -1069,7 +1114,7 @@ namespace SyncRoomChatToolV2
                 }
                 await Task.Delay(500);
                 TreeWalker twPrimary = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "primary-area"));
-                AutomationElement primaryArea = twPrimary.GetFirstChild(webArea); 
+                AutomationElement primaryArea = twPrimary.GetFirstChild(webArea);
                 if (primaryArea is null) { return; }
 
                 AutomationElement exitBtn2 = twButton.GetFirstChild(primaryArea);

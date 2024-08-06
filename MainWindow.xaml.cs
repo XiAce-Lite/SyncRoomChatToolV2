@@ -10,12 +10,10 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
-using System.Security.Policy;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
-using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
@@ -107,7 +105,7 @@ namespace SyncRoomChatToolV2
                 var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
 
                 // Take the screenshot from the upper left corner to the right bottom corner
-                gfxScreenshot.CopyFromScreen((int)rect.X, (int)rect.Y, 0, 0,
+                gfxScreenshot.CopyFromScreen((int)rect.X - 24, (int)rect.Y, 0, 0,
                                                  new System.Drawing.Size((int)rect.Width, (int)rect.Height), CopyPixelOperation.SourceCopy);
 
                 var buffer = new byte[bmpScreenshot.Size.Height * bmpScreenshot.Size.Width * 4];
@@ -329,6 +327,7 @@ namespace SyncRoomChatToolV2
             if (match.Success)
             {
                 Message = Message.Replace(match.ToString(), "、ふふっ");
+                Lang = 0;
             }
 
             //行末のｗｗｗ対応
@@ -336,6 +335,7 @@ namespace SyncRoomChatToolV2
             if (match.Success)
             {
                 Message = Message.Replace(match.ToString(), "、ふふっ");
+                Lang = 0;
             }
 
             //文字数制限
@@ -361,7 +361,6 @@ namespace SyncRoomChatToolV2
 
             //VOICEVOX用
             string baseUrl = Settings.Default.VoiceVoxAddress;
-            string url;
 
             if (string.IsNullOrEmpty(baseUrl))
             {
@@ -375,17 +374,14 @@ namespace SyncRoomChatToolV2
             }
 
             //クエリー作成
-            url = baseUrl + $"audio_query?text='{Message}'&speaker={StyleId}";
+            string url = baseUrl + $"audio_query?text='{Message}'&speaker={StyleId}";
 
             var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
             string QueryResponce = "";
 
             var ret = client.Post(ref QueryResponce, "");
 
-            if (ret == null)
-            {
-                return;
-            }
+            if (ret is null) { return; }
 
             //音声合成
             var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(QueryResponce.ToString());
@@ -576,10 +572,27 @@ namespace SyncRoomChatToolV2
 
             ContentRendered += MainWindow_ContentRendered;
             Closing += MainWindow_Closing;
+            ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
 
             MainVM.Info.SysInfo = "起動中…";
             //MainVM.Info.ChatLog = "";
             DataContext = MainVM;
+        }
+
+        private void ToastNotificationManagerCompat_OnActivated(ToastNotificationActivatedEventArgsCompat e)
+        {
+            var arg = e.Argument;
+            if (!string.IsNullOrEmpty(arg))
+            {
+                if (arg == "cancel") { return; }
+
+                Uri u = new(arg);
+
+                if (u.IsAbsoluteUri)
+                {
+                    Tools.OpenUrl(arg);
+                }
+            }
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -1054,9 +1067,13 @@ namespace SyncRoomChatToolV2
             AutomationElement EditBox2 = twEdit.GetFirstChild(EditBox1);
             if (EditBox2 is null) { return; }
 
-            TreeWalker twButton = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
-            AutomationElement EditButton = twButton.GetLastChild(chat);
+            TreeWalker twChatInput = new(new PropertyCondition(AutomationElement.ClassNameProperty, "chat-input-backgraund d-flex"));
+            if (twChatInput is null) { return; }
+            AutomationElement chatInputBackground = twChatInput.GetFirstChild(chat);
+            if (chatInputBackground is null) { return; }
 
+            TreeWalker twButton = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
+            AutomationElement EditButton = twButton.GetLastChild(chatInputBackground);
 
             if (e.Key == Key.Return)
             {
@@ -1158,6 +1175,52 @@ namespace SyncRoomChatToolV2
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
+            MenuToggleButton.IsChecked = false;
+        }
+
+        private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            var fullname = typeof(App).Assembly.Location;
+            var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(fullname);
+            var ver = info.FileVersion;
+
+            //クエリー作成
+            string url = "https://github.com/XiAce-Lite/SyncRoomChatToolV2/releases/latest";
+
+            var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+            var ret = client.Get();
+            if (ret is null) { return; }
+
+            var document = JsonConvert.DeserializeObject<System.Dynamic.ExpandoObject>(ret);
+            if (document is null) { return; }
+
+            foreach (var item in document)
+            {
+                if (item.Key == "tag_name")
+                {
+                    if (item.Value is null)
+                    {
+                        break;
+                    }
+
+                    if (item.Value.ToString() != $"v{ver}") {
+                        try
+                        {
+                            new ToastContentBuilder()
+                                .AddText("読み上げちゃんに更新があります。")
+                                .AddButton("Githubを開く", ToastActivationType.Foreground, url)
+                                .AddButton(new ToastButton("Cancel","cancel"))
+                                .Show();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Failed to show Windows notification: {Message}", ex.Message);
+                            Application.Current.Shutdown();
+                        }
+                    }
+                }
+            }
+
             MenuToggleButton.IsChecked = false;
         }
     }

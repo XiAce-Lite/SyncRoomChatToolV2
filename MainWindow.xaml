@@ -281,6 +281,21 @@
                         </StackPanel>
 
                         <Button
+                            x:Name="BtnCheckUpdate"
+                            Margin="0,0,0,0"
+                            HorizontalAlignment="Left"
+                            Click="BtnCheckUpdate_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}">
+                            <DockPanel>
+                                <materialDesign:PackIcon Kind="Update" />
+                                <TextBlock
+                                    Margin="10,0"
+                                    Cursor=""
+                                    Text="更新チェック" />
+                            </DockPanel>
+                        </Button>
+
+                        <Button
                             x:Name="BtnSettings"
                             Margin="0,0,0,0"
                             HorizontalAlignment="Left"

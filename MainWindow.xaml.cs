@@ -34,6 +34,7 @@ namespace SyncRoomChatToolV2
         AutomationElement? studio = null;
         AutomationElement? webArea = null;
 
+        #region 正規表現のエリア
         [GeneratedRegex("https?://")]
         private static partial Regex httpReg();
 
@@ -57,8 +58,6 @@ namespace SyncRoomChatToolV2
 
         [GeneratedRegex(@"^/s", RegexOptions.IgnoreCase)]
         private static partial Regex speechReg();
-        //        [GeneratedRegex(@"^/c", RegexOptions.IgnoreCase)]
-        //        private static partial Regex chimeReg();
 
         [GeneratedRegex("ツイキャスユーザ")]
         private static partial Regex twiCasUserReg();
@@ -74,6 +73,7 @@ namespace SyncRoomChatToolV2
 
         [GeneratedRegex(@"(ｗ|w){1,}$", RegexOptions.IgnoreCase)]
         private static partial Regex laugh2Reg();
+        #endregion
 
         private static string LastURL = "";
 
@@ -106,7 +106,7 @@ namespace SyncRoomChatToolV2
 
                 // Take the screenshot from the upper left corner to the right bottom corner
                 gfxScreenshot.CopyFromScreen((int)rect.X - 24, (int)rect.Y, 0, 0,
-                                                 new System.Drawing.Size((int)rect.Width, (int)rect.Height), CopyPixelOperation.SourceCopy);
+                                                 new System.Drawing.Size((int)((int)rect.Width * 0.94), (int)((int)rect.Height * 0.94)), CopyPixelOperation.SourceCopy);
 
                 var buffer = new byte[bmpScreenshot.Size.Height * bmpScreenshot.Size.Width * 4];
                 var stream = new MemoryStream(buffer);
@@ -621,6 +621,13 @@ namespace SyncRoomChatToolV2
             //GridSplitterの位置復元
             var widthA = Settings.Default.GridRowWidthA;
             var widthB = Settings.Default.GridRowWidthB;
+
+            if (widthA == 0) {
+                widthA = 200;
+            }
+            if (widthB == 0) {
+                widthB = Width - widthA;
+            }
 
             SplitGrid.ColumnDefinitions[0].Width = new GridLength(widthA, GridUnitType.Star);
             SplitGrid.ColumnDefinitions[2].Width = new GridLength(widthB, GridUnitType.Star);

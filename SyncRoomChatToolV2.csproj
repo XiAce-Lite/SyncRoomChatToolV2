@@ -9,7 +9,7 @@
     <UseWPF>True</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>SyncRoomChatToolV2.ico</ApplicationIcon>
-    <FileVersion>0.0.2.6</FileVersion>
+    <FileVersion>0.0.2.7</FileVersion>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 

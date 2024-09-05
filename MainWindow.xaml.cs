@@ -32,7 +32,7 @@ namespace SyncRoomChatToolV2
         //webAreaとStudioエレメントのスコープを上げてみる。
         //appエレメントがControlじゃないので取れなかっ（多分やり方あるんだろうけど。RootWebAreaの方が上位なんだよなぁ）
         AutomationElement? studio = null;
-        AutomationElement? webArea = null;
+        AutomationElement? rootWebArea = null;
 
         #region 正規表現のエリア
         [GeneratedRegex("https?://")]
@@ -622,10 +622,12 @@ namespace SyncRoomChatToolV2
             var widthA = Settings.Default.GridRowWidthA;
             var widthB = Settings.Default.GridRowWidthB;
 
-            if (widthA == 0) {
+            if (widthA == 0)
+            {
                 widthA = 200;
             }
-            if (widthB == 0) {
+            if (widthB == 0)
+            {
                 widthB = Width - widthA;
             }
 
@@ -682,7 +684,7 @@ namespace SyncRoomChatToolV2
                 {
                     if (proc.MainWindowTitle == "SYNCROOM")
                     {
-                        //MainWindotTitle が "SYNCROOM"なプロセス＝ターゲットのプロセスは、SYNCROOM2.exeが中で作った別プロセスのようで
+                        //MainWindowTitle が "SYNCROOM"なプロセス＝ターゲットのプロセスは、SYNCROOM2.exeが中で作った別プロセスのようで
                         //こんな面倒なやり方をしてみている。
                         rootElement = AutomationElement.FromHandle(proc.MainWindowHandle);
                         break;
@@ -695,16 +697,16 @@ namespace SyncRoomChatToolV2
                     continue;
                 }
 
-                webArea = rootElement.FindFirst(TreeScope.Children | TreeScope.Descendants,
+                rootWebArea = rootElement.FindFirst(TreeScope.Children | TreeScope.Descendants,
                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "RootWebArea"));
-                if (webArea is null)
+                if (rootWebArea is null)
                 {
                     msg = "RootWebArea Is Null.";
                     continue;
                 }
 
                 //狙いの要素のちょい上の要素に、"studio"ってのがある。ここを起点にする。
-                studio = webArea.FindFirst(TreeScope.Element | TreeScope.Descendants,
+                studio = rootWebArea.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "studio"));
 
                 MainVM.Members?.Clear();
@@ -782,7 +784,7 @@ namespace SyncRoomChatToolV2
                 if (chat is null)
                 {
                     twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
-                    chat = twChat.GetFirstChild(webArea);
+                    chat = twChat.GetFirstChild(rootWebArea);
                     if (chat is null) { continue; }
                 }
 
@@ -815,10 +817,10 @@ namespace SyncRoomChatToolV2
                     try
                     {
                         //連結チェック
-                        if (webArea is null) { continue; }
+                        if (rootWebArea is null) { continue; }
 
                         TreeWalker twApp = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "app"));
-                        AutomationElement app = twApp.GetFirstChild(webArea);
+                        AutomationElement app = twApp.GetFirstChild(rootWebArea);
                         if (app is null) { continue; }
 
                         TreeWalker twInvitations = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "room-invitations-length-back"));
@@ -1064,7 +1066,7 @@ namespace SyncRoomChatToolV2
             if (chat is null)
             {
                 twChat = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "docked-chat"));
-                chat = twChat.GetFirstChild(webArea);
+                chat = twChat.GetFirstChild(rootWebArea);
                 if (chat is null) { return; }
             }
 
@@ -1074,7 +1076,7 @@ namespace SyncRoomChatToolV2
             AutomationElement EditBox2 = twEdit.GetFirstChild(EditBox1);
             if (EditBox2 is null) { return; }
 
-            TreeWalker twChatInput = new(new PropertyCondition(AutomationElement.ClassNameProperty, "chat-input-backgraund d-flex"));
+            TreeWalker twChatInput = new(new PropertyCondition(AutomationElement.ClassNameProperty, "chat-input-backgraund d-flex floatable"));
             if (twChatInput is null) { return; }
             AutomationElement chatInputBackground = twChatInput.GetFirstChild(chat);
             if (chatInputBackground is null) { return; }
@@ -1087,11 +1089,14 @@ namespace SyncRoomChatToolV2
                 if (EditBox2.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePattern))
                 {
                     ((ValuePattern)valuePattern).SetValue(ChatInputCombo.Text);
-                }
 
-                if (EditButton.GetCurrentPattern(InvokePattern.Pattern) is InvokePattern btn)
-                {
-                    btn.Invoke();
+                    if (EditButton.GetCurrentPattern(InvokePattern.Pattern) is InvokePattern btn)
+                    {
+                        btn.Invoke();
+                    }
+
+                    //なんでか2.0.4から文字が残る気がする。前からだっけ？空文字はダメの模様。半角スペースをぶっ込む。
+                    ((ValuePattern)valuePattern).SetValue(" ");
                 }
 
                 bool existFlg = false;
@@ -1116,10 +1121,10 @@ namespace SyncRoomChatToolV2
 
         private async void ExitButton_Click(object sender, RoutedEventArgs e)
         {
-            if (webArea is null) { return; }
+            if (rootWebArea is null) { return; }
 
             TreeWalker twApp = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "app"));
-            AutomationElement app = twApp.GetFirstChild(webArea);
+            AutomationElement app = twApp.GetFirstChild(rootWebArea);
             if (app is null) { return; }
 
             TreeWalker twExit = new(new PropertyCondition(AutomationElement.ClassNameProperty, "exit-button"));
@@ -1137,11 +1142,11 @@ namespace SyncRoomChatToolV2
                     btn.Expand();
                 }
                 await Task.Delay(500);
-                TreeWalker twPrimary = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "primary-area"));
-                AutomationElement primaryArea = twPrimary.GetFirstChild(webArea);
-                if (primaryArea is null) { return; }
+                TreeWalker twFirst = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "first-area"));
+                AutomationElement FirstArea = twFirst.GetFirstChild(rootWebArea);
+                if (FirstArea is null) { return; }
 
-                AutomationElement exitBtn2 = twButton.GetFirstChild(primaryArea);
+                AutomationElement exitBtn2 = twButton.GetFirstChild(FirstArea);
 
                 if (exitBtn2.GetCurrentPattern(InvokePattern.Pattern) is InvokePattern btn2)
                 {
@@ -1210,13 +1215,14 @@ namespace SyncRoomChatToolV2
                         break;
                     }
 
-                    if (item.Value.ToString() != $"v{ver}") {
+                    if (item.Value.ToString() != $"v{ver}")
+                    {
                         try
                         {
                             new ToastContentBuilder()
                                 .AddText("読み上げちゃんに更新があります。")
                                 .AddButton("Githubを開く", ToastActivationType.Foreground, url)
-                                .AddButton(new ToastButton("Cancel","cancel"))
+                                .AddButton(new ToastButton("Cancel", "cancel"))
                                 .Show();
                         }
                         catch (Exception ex)

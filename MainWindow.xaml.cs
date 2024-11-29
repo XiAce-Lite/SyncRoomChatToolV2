@@ -44,7 +44,7 @@ namespace SyncRoomChatToolV2
         [GeneratedRegex("[ぁ-んァ-ヶｱ-ﾝﾞﾟ一-龠！-／：-＠［-｀｛-～、-〜”’・]")]
         private static partial Regex jpReg();
 
-        [GeneratedRegex(@"^\/\d{1,2}")]
+        [GeneratedRegex(@"^\/\d{1,9}")]
         private static partial Regex styleReg();
 
         [GeneratedRegex(@"\d{1,2}")]
@@ -212,6 +212,12 @@ namespace SyncRoomChatToolV2
             //ランダム音声割り当て用。ここ、コメントしたら全員デフォでしゃべる。
             Random rnd = new() { };
             StyleId = RandTable[rnd.Next(RandTable.Length)];
+
+            //AivisSpeech用のBaseUrlだった場合、StyleIdの初期値を変える。
+            if (Settings.Default.VoiceVoxAddress.Contains("10101"))
+            {
+                StyleId = 888753760;
+            }
 
             bool existsFlg = UserTable.Exists(x => x.UserName == UserName);
             if (existsFlg)

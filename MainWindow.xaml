@@ -191,6 +191,7 @@
                             Margin="4,0,4,0"
                             materialDesign:HintAssist.Hint="チャット入力可能です。右クリックも使えます。"
                             materialDesign:HintAssist.IsFloating="True"
+                            materialDesign:HintAssist.FloatingOffset="2,-13"
                             materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
                             materialDesign:TextFieldAssist.HasClearButton="True"
                             materialDesign:TextFieldAssist.HasOutlinedTextField="True"

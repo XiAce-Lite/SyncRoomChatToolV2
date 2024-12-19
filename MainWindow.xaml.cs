@@ -1076,23 +1076,51 @@ namespace SyncRoomChatToolV2
                 if (chat is null) { return; }
             }
 
-            TreeWalker twEdit = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
-            AutomationElement EditBox1 = twEdit.GetFirstChild(chat);
-            if (EditBox1 is null) { return; }
-            AutomationElement EditBox2 = twEdit.GetFirstChild(EditBox1);
-            if (EditBox2 is null) { return; }
-
+            //編集エリアとボタンのグループを探す。
             TreeWalker twChatInput = new(new PropertyCondition(AutomationElement.ClassNameProperty, "chat-input-backgraund d-flex floatable"));
             if (twChatInput is null) { return; }
             AutomationElement chatInputBackground = twChatInput.GetFirstChild(chat);
             if (chatInputBackground is null) { return; }
 
+            //編集エリア内から、テキストボックスの実体を探す。
+            TreeWalker twEdit = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
+
+            //2.1.1でコメントアウト
+            //編集エリアの上の要素
+            //AutomationElement EditBoxParent = twEdit.GetFirstChild(chatInputBackground);
+            //if (EditBoxParent is null) { return; }
+            //編集エリアのテキストボックスの要素（ここに文字はぶっ込む）
+            //AutomationElement EditBox = twEdit.GetFirstChild(EditBoxParent);
+
+            //編集エリアのテキストボックスの要素（ここに文字はぶっ込む）
+            AutomationElement EditBox = twEdit.GetLastChild(chatInputBackground);
+            if (EditBox is null) { return; }
+
+            //2.1.1だとここは要らない
+            //（構造が変わって「編集（上位）」→「編集（実体）」ではなく、いきなり「編集（実体のテキストボックス）」なので。
+
+            //2.1.0以前の対応になるかな？
+            int cnt = 0;
+            //実体のテキストボックスのNameは「チャット」なのでそこでチェック。チョイダサい。
+            while (EditBox.Current.Name is not "チャット")
+            {
+                cnt++;
+                EditBox = twEdit.GetLastChild(EditBox);
+                //一応3回トライして見つからなかったら抜ける。
+                if (cnt >= 3)
+                {
+                    break;
+                }
+                //抜けちゃって実体のテキストボックス要素が取れなくても、入力出来ないだけで落ちはしない模様。
+            }
+
+            //ボタンの実体を探す（このボタンをInvokeする）
             TreeWalker twButton = new(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
             AutomationElement EditButton = twButton.GetLastChild(chatInputBackground);
 
             if (e.Key == Key.Return)
             {
-                if (EditBox2.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePattern))
+                if (EditBox.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePattern))
                 {
                     ((ValuePattern)valuePattern).SetValue(ChatInputCombo.Text);
 

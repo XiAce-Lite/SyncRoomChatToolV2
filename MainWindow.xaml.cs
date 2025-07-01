@@ -81,7 +81,7 @@ namespace SyncRoomChatToolV2
         private static readonly string VoiceVoxDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs\\VOICEVOX\\vv-engine\\run.exe");
         private static readonly string VoiceVoxDefaultOldPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs\\VOICEVOX\\run.exe");
 
-        private static readonly List<Speaker> UserTable = [];
+        private static readonly Dictionary<string, Speaker> UserTable = new();
         private static readonly List<Speaker> StyleDef = [];
         private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
 
@@ -99,17 +99,17 @@ namespace SyncRoomChatToolV2
                     return null;
                 }
                 // Set the bitmap object to the size of the screen
-                var bmpScreenshot = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
+                using var bmpScreenshot = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
 
                 // Create a graphics object from the bitmap
-                var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
+                using var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
 
                 // Take the screenshot from the upper left corner to the right bottom corner
-                gfxScreenshot.CopyFromScreen((int)rect.X - 24, (int)rect.Y, 0, 0,
-                                                 new System.Drawing.Size((int)((int)rect.Width * 0.94), (int)((int)rect.Height * 0.94)), CopyPixelOperation.SourceCopy);
+                gfxScreenshot.CopyFromScreen((int)rect.X, (int)rect.Y, 0, 0,
+                                                 new System.Drawing.Size((int)((int)rect.Width), (int)((int)rect.Height)), CopyPixelOperation.SourceCopy);
 
                 var buffer = new byte[bmpScreenshot.Size.Height * bmpScreenshot.Size.Width * 4];
-                var stream = new MemoryStream(buffer);
+                using var stream = new MemoryStream(buffer);
 
                 bmpScreenshot.Save(stream, ImageFormat.Png);
                 stream.Seek(0, SeekOrigin.Begin);
@@ -127,18 +127,15 @@ namespace SyncRoomChatToolV2
             }
         }
 
-        private static void UpdateUserOption(bool existsFlg, string UserName, int StyleId, bool ChatFlg, bool SpeechFlg, double SpeedScale)
+        private static void UpdateUserOption(string UserName, int StyleId, bool ChimeFlg, bool SpeechFlg, double SpeedScale)
         {
-            if (existsFlg)
+            if (UserTable.TryGetValue(UserName, out var item))
             {
-                foreach (var item in UserTable.Where(x => x.UserName == UserName))
-                {
-                    item.StyleId = StyleId;
-                    item.UserName = UserName;
-                    item.ChimeFlg = ChatFlg;
-                    item.SpeechFlg = SpeechFlg;
-                    item.SpeedScale = SpeedScale;
-                }
+                item.StyleId = StyleId;
+                item.UserName = UserName;
+                item.ChimeFlg = ChimeFlg;
+                item.SpeechFlg = SpeechFlg;
+                item.SpeedScale = SpeedScale;
             }
             else
             {
@@ -146,11 +143,11 @@ namespace SyncRoomChatToolV2
                 {
                     StyleId = StyleId,
                     UserName = UserName,
-                    ChimeFlg = ChatFlg,
+                    ChimeFlg = ChimeFlg,
                     SpeechFlg = SpeechFlg,
                     SpeedScale = SpeedScale
                 };
-                UserTable.Add(addLine);
+                UserTable[UserName] = addLine;
             }
         }
 
@@ -219,22 +216,18 @@ namespace SyncRoomChatToolV2
                 StyleId = 888753760;
             }
 
-            bool existsFlg = UserTable.Exists(x => x.UserName == UserName);
+            bool existsFlg = UserTable.ContainsKey(UserName);
             if (existsFlg)
             {
-                //UserTableから、StyleIdその他の取り出し。
-                foreach (var item in UserTable.Where(x => x.UserName == UserName))
-                {
-                    StyleId = item.StyleId;
-                    ChimeFlg = item.ChimeFlg;
-                    SpeechFlg = item.SpeechFlg;
-                    SpeedScale = item.SpeedScale;
-                    break;
-                }
+                var item2 = UserTable[UserName];
+                StyleId = item2.StyleId;
+                ChimeFlg = item2.ChimeFlg;
+                SpeechFlg = item2.SpeechFlg;
+                SpeedScale = item2.SpeedScale;
             }
             else
             {
-                UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
+                UpdateUserOption(UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
             }
             //ランダムここまで
 
@@ -253,7 +246,7 @@ namespace SyncRoomChatToolV2
                         StyleId = int.Parse(match.ToString());
 
                         //[]で指定された数値が、スタイル一覧と合致した場合は、UserTableになければ追加、あれば更新。
-                        UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
+                        UpdateUserOption(UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
                     }
                 }
             }
@@ -278,7 +271,7 @@ namespace SyncRoomChatToolV2
                     {
                         SpeedScale = 0.4;
                     }
-                    UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
+                    UpdateUserOption(UserName, StyleId, ChimeFlg, SpeechFlg, SpeedScale);
                 }
             }
 
@@ -287,7 +280,7 @@ namespace SyncRoomChatToolV2
             if (match.Success)
             {
                 Message = Message.Replace(match.ToString(), "");
-                UpdateUserOption(existsFlg, UserName, StyleId, ChimeFlg, !SpeechFlg, SpeedScale);
+                UpdateUserOption(UserName, StyleId, ChimeFlg, !SpeechFlg, SpeedScale);
             }
 
             /*
@@ -301,12 +294,12 @@ namespace SyncRoomChatToolV2
             */
 
             //UserTableから、StyleIdその他の取り出し。
-            foreach (var item in UserTable.Where(x => x.UserName == UserName))
+            if (UserTable.TryGetValue(UserName, out var item))
             {
                 StyleId = item.StyleId;
                 ChimeFlg = item.ChimeFlg;
                 SpeechFlg = item.SpeechFlg;
-                break;
+                //break;
             }
 
             //スピーチフラグチェック。スピーチしない＝抜ける
@@ -402,13 +395,13 @@ namespace SyncRoomChatToolV2
                 url = baseUrl + $"synthesis?speaker={StyleId}";
                 client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
 
-                string wavFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+                string wavFile = Path.Combine(Path.GetTempPath(), "chat.wav"); //Path.GetRandomFileName());
                 ret = client.Post(ref QueryResponce, wavFile);
                 if (ret.StatusCode.Equals(HttpStatusCode.OK))
                 {
                     //再生する。
-                    var waveReader = new WaveFileReader(wavFile);
-                    var waveOut = new WaveOut();
+                    using var waveReader = new WaveFileReader(wavFile);
+                    using var waveOut = new WaveOut();
                     waveOut.Init(waveReader);
                     waveOut.Play();
 
@@ -578,7 +571,13 @@ namespace SyncRoomChatToolV2
 
             ContentRendered += MainWindow_ContentRendered;
             Closing += MainWindow_Closing;
-            ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
+            try
+            {
+                ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
+            }
+            catch (Exception)
+            {
+            }
 
             MainVM.Info.SysInfo = "起動中…";
             //MainVM.Info.ChatLog = "";
@@ -1021,8 +1020,11 @@ namespace SyncRoomChatToolV2
                                     {
                                         if (Path.Exists(Settings.Default.LinkWaveFilePath))
                                         {
-                                            var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
-                                            var waveOut = new WaveOut();
+                                            string wavFile = Path.Combine(Path.GetTempPath(), "chat.wav");
+                                            File.Copy(Settings.Default.LinkWaveFilePath, wavFile, true);
+
+                                            using var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
+                                            using var waveOut = new WaveOut();
                                             waveOut.Init(waveReader);
                                             waveOut.Play();
                                             while (waveOut.PlaybackState == PlaybackState.Playing)

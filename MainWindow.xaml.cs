@@ -142,45 +142,40 @@ namespace SyncRoomChatToolV2
         // VoiceVoxWarmUp メソッドの修正
         private static async Task VoiceVoxWarmUp()
         {
-            await Task.Run(() =>
+            string[] testMessages = ["テストです。", "これはウォームアップ用の長めの文章です。", "VOICEVOXの動作確認をおこなっています。"];
+            int styleId = 2;
+            string baseUrl = Settings.Default.VoiceVoxAddress;
+            if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:50021";
+            if (!baseUrl.EndsWith('/')) baseUrl += "/";
+
+            foreach (var testMessage in testMessages)
             {
-                string[] testMessages = ["テストです。", "これはウォームアップ用の長めの文章です。", "VOICEVOXの動作確認をおこなっています。"];
-                int styleId = 2;
-                string baseUrl = Settings.Default.VoiceVoxAddress;
-                if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:50021";
-                if (!baseUrl.EndsWith('/')) baseUrl += "/";
+                string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
+                var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                string queryResponse = "";
+                var ret = client.Post(ref queryResponse, "");
+                if (ret is null) continue;
 
-                foreach (var testMessage in testMessages)
+                var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
+                if (queryJson is null) continue;
+                queryJson.VolumeScale = Settings.Default.Volume;
+                queryJson.SpeedScale = 1.0;
+                queryResponse = JsonConvert.SerializeObject(queryJson);
+
+                if (ret.StatusCode.Equals(HttpStatusCode.OK))
                 {
-                    string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
-                    var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-                    string queryResponse = "";
-                    var ret = client.Post(ref queryResponse, "");
-                    if (ret is null) continue;
+                    url = baseUrl + $"synthesis?speaker={styleId}";
+                    client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
 
-                    var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
-                    if (queryJson is null) continue;
-                    queryJson.VolumeScale = Settings.Default.Volume;
-                    queryJson.SpeedScale = 1.0;
-                    queryResponse = JsonConvert.SerializeObject(queryJson);
-
+                    string wavFile = Path.Combine(Path.GetTempPath(), $"chat_warmup_{Guid.NewGuid()}.wav");
+                    ret = client.Post(ref queryResponse, wavFile);
                     if (ret.StatusCode.Equals(HttpStatusCode.OK))
                     {
-                        url = baseUrl + $"synthesis?speaker={styleId}";
-                        client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-
-                        string wavFile = Path.Combine(Path.GetTempPath(), $"chat_warmup_{Guid.NewGuid()}.wav");
-                        ret = client.Post(ref queryResponse, wavFile);
-#if DEBUG
-                        if (ret.StatusCode.Equals(HttpStatusCode.OK))
-                        {
-                            // デバッグ時のみ再生
-                            PlayWavAsync(wavFile).Wait();
-                        }
-#endif
+                        // デバッグ時のみ再生（awaitで非同期に）
+                        await PlayWavAsync(wavFile);
                     }
                 }
-            });
+            }
         }
 
         private static async Task SpeechMessageAsync(string UserName, string Message)
@@ -688,7 +683,17 @@ namespace SyncRoomChatToolV2
             var ver = info.FileVersion;
             Title = $"SyncRoom読み上げちゃん V2 ver {ver}";
 
-            _ = VoiceVoxWarmUp(); // 画面描画後にウォームアップ
+            // VoiceVox が使える場合のみウォームアップ
+            if (Settings.Default.UseVoiceVox
+                && !string.IsNullOrEmpty(Settings.Default.VoiceVoxPath)
+                && File.Exists(Settings.Default.VoiceVoxPath))
+            {
+                TargetProcess tp = new("run");
+                if (tp.IsAlive)
+                {
+                    _ = VoiceVoxWarmUp();
+                }
+            }
 
             _ = GetChat();
         }
@@ -875,7 +880,7 @@ namespace SyncRoomChatToolV2
                         if (app is null) { continue; }
 
                         TreeWalker twInvitations = new(new PropertyCondition(AutomationElement.AutomationIdProperty, "room-invitations-length-back"));
-                        AutomationElement elInvitation = twInvitations.GetFirstChild(app);
+                        AutomationElement? elInvitation = twInvitations.GetFirstChild(app);
                         if (elInvitation is null) { invitationFlg = false; }
 
                         if (invitationFlg == false)
@@ -907,7 +912,15 @@ namespace SyncRoomChatToolV2
                                 invitationFlg = true;
                             }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        msg = $"何かエラーです。[{e.Message}] {DateTime.Now}";
+                        break;
+                    }
 
+                    try
+                    {
                         //メンバーの削除＆追加（毎回やる割には問題なさそう）
                         if (yourSelf is not null)
                         {
@@ -935,10 +948,25 @@ namespace SyncRoomChatToolV2
                                 BitmapSource bitmapSource = CaptureAndConvert(tempAvatarImage);
 
                                 Member item = new();
-                                if (tempNameText.Current.Name != null)
+                                if (tempNameText != null)
                                 {
-                                    item.MemberName = tempNameText.Current.Name;
+                                    try
+                                    {
+                                        if (tempNameText.Current.Name != null)
+                                        {
+                                            item.MemberName = tempNameText.Current.Name;
+                                        }
+                                    }
+                                    catch (ElementNotAvailableException e)
+                                    {
+                                        // 要素が無効化されている場合の処理
+                                        new ToastContentBuilder()
+                                            .AddText($"メンバー情報取得エラーです。")
+                                            .Show();
+                                        break;
+                                    }
                                 }
+ 
                                 if (tempPartText.Current.Name != null)
                                 {
                                     item.MemberPart = tempPartText.Current.Name;
@@ -1186,25 +1214,25 @@ namespace SyncRoomChatToolV2
 
                     //なんでか2.0.4から文字が残る気がする。前からだっけ？空文字はダメの模様。半角スペースをぶっ込む。
                     ((ValuePattern)valuePattern).SetValue(" ");
-                }
 
-                bool existFlg = false;
-                foreach (var item in ChatInputCombo.Items)
-                {
-                    if (item.ToString() == ChatInputCombo.Text)
+                    bool existFlg = false;
+                    foreach (var item in ChatInputCombo.Items)
                     {
-                        existFlg = true;
-                        break;
+                        if (item.ToString() == ChatInputCombo.Text)
+                        {
+                            existFlg = true;
+                            break;
+                        }
                     }
-                }
 
-                if (!existFlg)
-                {
-                    ChatInputCombo.Items.Add(ChatInputCombo.Text);
-                }
+                    if (!existFlg)
+                    {
+                        ChatInputCombo.Items.Add(ChatInputCombo.Text);
+                    }
 
-                ChatInputCombo.Text = "";
-                this.Activate();
+                    ChatInputCombo.Text = "";
+                    this.Activate();
+                }
             }
         }
 

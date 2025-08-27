@@ -38,6 +38,9 @@ namespace SyncRoomChatToolV2
         [GeneratedRegex("https?://")]
         private static partial Regex httpReg();
 
+        [GeneratedRegex(@"[ω]")]
+        private static partial Regex omegaReg();
+
         [GeneratedRegex("[ぁ-んァ-ヶｱ-ﾝﾞﾟ一-龠！-／：-＠［-｀｛-～、-〜”’・]")]
         private static partial Regex jpReg();
 
@@ -59,8 +62,17 @@ namespace SyncRoomChatToolV2
         [GeneratedRegex("ツイキャスユーザ")]
         private static partial Regex twiCasUserReg();
 
-        [GeneratedRegex(@"(ω)|((８|8){2,})|((８|8){1,})|((ｗ|w){2,})|((ｗ|w){1,}$)", RegexOptions.IgnoreCase)]
-        private static partial Regex MultiChatReg();
+        [GeneratedRegex(@"(８|8){2,}", RegexOptions.IgnoreCase)]
+        private static partial Regex handClap1Reg();
+
+        [GeneratedRegex(@"(８|8){1,}", RegexOptions.IgnoreCase)]
+        private static partial Regex handClap2Reg();
+
+        [GeneratedRegex(@"(ｗ|w){2,}", RegexOptions.IgnoreCase)]
+        private static partial Regex laugh1Reg();
+
+        [GeneratedRegex(@"(ｗ|w){1,}$", RegexOptions.IgnoreCase)]
+        private static partial Regex laugh2Reg();
         #endregion
 
         private static string LastURL = "";
@@ -69,7 +81,7 @@ namespace SyncRoomChatToolV2
         private static readonly string VoiceVoxDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs\\VOICEVOX\\vv-engine\\run.exe");
         private static readonly string VoiceVoxDefaultOldPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs\\VOICEVOX\\run.exe");
 
-        private static readonly Dictionary<string, Speaker> UserTable = [];
+        private static readonly Dictionary<string, Speaker> UserTable = new();
         private static readonly List<Speaker> StyleDef = [];
         private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
 
@@ -103,9 +115,9 @@ namespace SyncRoomChatToolV2
                 stream.Seek(0, SeekOrigin.Begin);
                 BitmapSource bitmapSource = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
 
-                //bmpScreenshot.Dispose();
-                //gfxScreenshot.Dispose();
-                //stream.Dispose();
+                bmpScreenshot.Dispose();
+                gfxScreenshot.Dispose();
+                stream.Dispose();
 
                 return bitmapSource;
             }
@@ -139,46 +151,7 @@ namespace SyncRoomChatToolV2
             }
         }
 
-        private static async Task VoiceVoxWarmUp()
-        {
-            string[] testMessages = ["テストです。", "これはウォームアップ用の長めの文章です。", "VOICEVOXの動作確認をおこなっています。"];
-            int styleId = 2;
-            string baseUrl = Settings.Default.VoiceVoxAddress;
-            if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:50021";
-            if (!baseUrl.EndsWith('/')) baseUrl += "/";
-
-            foreach (var testMessage in testMessages)
-            {
-                string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
-                var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-                string queryResponse = "";
-                var ret = client.Post(ref queryResponse, "");
-                if (ret is null) continue;
-
-                var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
-                if (queryJson is null) continue;
-                queryJson.VolumeScale = Settings.Default.Volume;
-                queryJson.SpeedScale = 1.0;
-                queryResponse = JsonConvert.SerializeObject(queryJson);
-
-                if (ret.StatusCode.Equals(HttpStatusCode.OK))
-                {
-                    url = baseUrl + $"synthesis?speaker={styleId}";
-                    client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-
-                    string wavFile = Path.Combine(Path.GetTempPath(), $"chat_warmup_{Guid.NewGuid()}.wav");
-                    ret = client.Post(ref queryResponse, wavFile);
-#if DEBUG
-                    if (ret.StatusCode.Equals(HttpStatusCode.OK))
-                    {
-                        await PlayWavAsync(wavFile); // デバッグ時のみ再生
-                    }
-#endif
-                }
-            }
-        }
-
-        private static async Task SpeechMessageAsync(string UserName, string Message)
+        private static void SpeechMessage(string UserName, string Message)
         {
             int Lang = 0;
             int StyleId = 2;
@@ -221,7 +194,11 @@ namespace SyncRoomChatToolV2
             Message = Message.Trim();
 
             //ωのチェック。これうざいので。
-            Message = Message.Replace("ω", "");
+            match = omegaReg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace("ω", "");
+            }
 
             if (string.IsNullOrEmpty(Message)) { return; }
 
@@ -331,33 +308,33 @@ namespace SyncRoomChatToolV2
             //名前にツイキャスユーザが入っている場合。
             if (twiCasUserReg().Match(Message).Success) { StyleId = 8; }
 
-            // まとめて判定・置換
-            match = MultiChatReg().Match(Message);
-            while (match.Success)
+            //8888対応
+            match = handClap1Reg().Match(Message);
+            if (match.Success)
             {
-                if (match.Groups[1].Success) // ω
-                {
-                    Message = Message.Replace("ω", "");
-                }
-                else if (match.Groups[2].Success) // 8888, ８８８８
-                {
-                    Message = Message.Replace(match.Groups[2].Value, "、パチパチパチ");
-                }
-                else if (match.Groups[4].Success) // 88, ８８
-                {
-                    Message = Message.Replace(match.Groups[4].Value, "、パチ");
-                }
-                else if (match.Groups[6].Success) // ｗｗｗ
-                {
-                    Message = Message.Replace(match.Groups[6].Value, "、ふふっ");
-                    Lang = 0;
-                }
-                else if (match.Groups[8].Success) // ｗ
-                {
-                    Message = Message.Replace(match.Groups[8].Value, "、ふふっ");
-                    Lang = 0;
-                }
-                match = match.NextMatch();
+                Message = Message.Replace(match.ToString(), "、パチパチパチ");
+            }
+            //8888対応
+            match = handClap2Reg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace(match.ToString(), "、パチ");
+            }
+
+            //ｗｗｗ対応
+            match = laugh1Reg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace(match.ToString(), "、ふふっ");
+                Lang = 0;
+            }
+
+            //行末のｗｗｗ対応
+            match = laugh2Reg().Match(Message);
+            if (match.Success)
+            {
+                Message = Message.Replace(match.ToString(), "、ふふっ");
+                Lang = 0;
             }
 
             //文字数制限
@@ -407,8 +384,9 @@ namespace SyncRoomChatToolV2
 
             //音声合成
             var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(QueryResponce.ToString());
-            if (queryJson is null) { return; }
+#nullable disable warnings
             queryJson.VolumeScale = Settings.Default.Volume;
+#nullable restore
             queryJson.SpeedScale = SpeedScale;
             QueryResponce = JsonConvert.SerializeObject(queryJson);
 
@@ -421,7 +399,6 @@ namespace SyncRoomChatToolV2
                 ret = client.Post(ref QueryResponce, wavFile);
                 if (ret.StatusCode.Equals(HttpStatusCode.OK))
                 {
-                    /*
                     //再生する。
                     using var waveReader = new WaveFileReader(wavFile);
                     using var waveOut = new WaveOut();
@@ -432,22 +409,8 @@ namespace SyncRoomChatToolV2
                     {
                         Task.Delay(50);
                     }
-                    */
-                    //非同期で再生する。
-                    await PlayWavAsync(wavFile);
                 }
             }
-        }
-
-        private static async Task PlayWavAsync(string wavFile)
-        {
-            using var waveReader = new WaveFileReader(wavFile);
-            using var waveOut = new WaveOut();
-            var tcs = new TaskCompletionSource();
-            waveOut.Init(waveReader);
-            waveOut.PlaybackStopped += (s, e) => tcs.SetResult();
-            waveOut.Play();
-            await tcs.Task;
         }
 
         public MainWindow()
@@ -614,7 +577,6 @@ namespace SyncRoomChatToolV2
             }
             catch (Exception)
             {
-                //無理に登録しなくてもいいよね。
             }
 
             MainVM.Info.SysInfo = "起動中…";
@@ -682,8 +644,6 @@ namespace SyncRoomChatToolV2
             var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(fullname);
             var ver = info.FileVersion;
             Title = $"SyncRoom読み上げちゃん V2 ver {ver}";
-
-            _ = VoiceVoxWarmUp(); // 画面描画後にウォームアップ
 
             _ = GetChat();
         }
@@ -818,10 +778,9 @@ namespace SyncRoomChatToolV2
                                 Source = bitmapSource
                             };
                         }
-
-                        if (MainVM.Members is null) { break; }
+#nullable disable warnings
                         MainVM.Members.Add(item);
-
+#nullable restore
                     }
                 }
 
@@ -895,8 +854,7 @@ namespace SyncRoomChatToolV2
                                 {
                                     if (Settings.Default.SpeechWhenInvited)
                                     {
-                                        //_ = Task.Run(() => SpeechMessageAsync(item.UserName, item.Message));
-                                        await SpeechMessageAsync(item.UserName, item.Message);
+                                        _ = Task.Run(() => SpeechMessage(item.UserName, item.Message));
                                     }
                                 }
                                 invitationFlg = true;
@@ -1047,9 +1005,8 @@ namespace SyncRoomChatToolV2
                                 Link = url,
                                 IsLink = IsLink
                             };
-
-                            Application.Current.Dispatcher.Invoke(() => MainVM.Chats.Add(item));
-
+                            MainVM.Chats.Add(item);
+                            //
 
                             if (Settings.Default.CanSpeech)
                             {
@@ -1066,7 +1023,6 @@ namespace SyncRoomChatToolV2
                                             string wavFile = Path.Combine(Path.GetTempPath(), "chat.wav");
                                             File.Copy(Settings.Default.LinkWaveFilePath, wavFile, true);
 
-                                            /*
                                             using var waveReader = new WaveFileReader(Settings.Default.LinkWaveFilePath);
                                             using var waveOut = new WaveOut();
                                             waveOut.Init(waveReader);
@@ -1075,17 +1031,13 @@ namespace SyncRoomChatToolV2
                                             {
                                                 await Task.Delay(50);
                                             }
-                                            */
-                                            //非同期で再生する。
-                                            await PlayWavAsync(Settings.Default.LinkWaveFilePath);
                                             continue;
                                         }
                                     }
                                 }
                                 if (!string.IsNullOrEmpty(Message))
                                 {
-                                    //_ = Task.Run(() => SpeechMessageAsync(elName.Current.Name, Message));
-                                    await SpeechMessageAsync(elName.Current.Name, Message);
+                                    _ = Task.Run(() => SpeechMessage(elName.Current.Name, Message));
                                 }
                             }
                         }

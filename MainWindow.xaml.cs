@@ -139,43 +139,48 @@ namespace SyncRoomChatToolV2
             }
         }
 
+        // VoiceVoxWarmUp メソッドの修正
         private static async Task VoiceVoxWarmUp()
         {
-            string[] testMessages = ["テストです。", "これはウォームアップ用の長めの文章です。", "VOICEVOXの動作確認をおこなっています。"];
-            int styleId = 2;
-            string baseUrl = Settings.Default.VoiceVoxAddress;
-            if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:50021";
-            if (!baseUrl.EndsWith('/')) baseUrl += "/";
-
-            foreach (var testMessage in testMessages)
+            await Task.Run(() =>
             {
-                string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
-                var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-                string queryResponse = "";
-                var ret = client.Post(ref queryResponse, "");
-                if (ret is null) continue;
+                string[] testMessages = ["テストです。", "これはウォームアップ用の長めの文章です。", "VOICEVOXの動作確認をおこなっています。"];
+                int styleId = 2;
+                string baseUrl = Settings.Default.VoiceVoxAddress;
+                if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:50021";
+                if (!baseUrl.EndsWith('/')) baseUrl += "/";
 
-                var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
-                if (queryJson is null) continue;
-                queryJson.VolumeScale = Settings.Default.Volume;
-                queryJson.SpeedScale = 1.0;
-                queryResponse = JsonConvert.SerializeObject(queryJson);
-
-                if (ret.StatusCode.Equals(HttpStatusCode.OK))
+                foreach (var testMessage in testMessages)
                 {
-                    url = baseUrl + $"synthesis?speaker={styleId}";
-                    client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                    string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
+                    var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                    string queryResponse = "";
+                    var ret = client.Post(ref queryResponse, "");
+                    if (ret is null) continue;
 
-                    string wavFile = Path.Combine(Path.GetTempPath(), $"chat_warmup_{Guid.NewGuid()}.wav");
-                    ret = client.Post(ref queryResponse, wavFile);
-#if DEBUG
+                    var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
+                    if (queryJson is null) continue;
+                    queryJson.VolumeScale = Settings.Default.Volume;
+                    queryJson.SpeedScale = 1.0;
+                    queryResponse = JsonConvert.SerializeObject(queryJson);
+
                     if (ret.StatusCode.Equals(HttpStatusCode.OK))
                     {
-                        await PlayWavAsync(wavFile); // デバッグ時のみ再生
-                    }
+                        url = baseUrl + $"synthesis?speaker={styleId}";
+                        client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+
+                        string wavFile = Path.Combine(Path.GetTempPath(), $"chat_warmup_{Guid.NewGuid()}.wav");
+                        ret = client.Post(ref queryResponse, wavFile);
+#if DEBUG
+                        if (ret.StatusCode.Equals(HttpStatusCode.OK))
+                        {
+                            // デバッグ時のみ再生
+                            PlayWavAsync(wavFile).Wait();
+                        }
 #endif
+                    }
                 }
-            }
+            });
         }
 
         private static async Task SpeechMessageAsync(string UserName, string Message)

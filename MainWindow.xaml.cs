@@ -71,7 +71,7 @@ namespace SyncRoomChatToolV2
 
         private static readonly Dictionary<string, Speaker> UserTable = [];
         private static readonly List<Speaker> StyleDef = [];
-        private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 16, 20, 23, 29];
+        private static readonly int[] RandTable = [0, 1, 2, 3, 6, 7, 8, 9, 10, 14, 20, 23, 29];
 
         private static BitmapSource? CaptureAndConvert(AutomationElement avatar)
         {
@@ -139,43 +139,61 @@ namespace SyncRoomChatToolV2
             }
         }
 
-        // VoiceVoxWarmUp メソッドの修正
-        private static async Task VoiceVoxWarmUp()
+        private static Task VoiceVoxWarmUp()
         {
-            string[] testMessages = ["テストです。", "これはウォームアップ用の長めの文章です。", "VOICEVOXの動作確認をおこなっています。"];
-            int styleId = 2;
-            string baseUrl = Settings.Default.VoiceVoxAddress;
-            if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:50021";
-            if (!baseUrl.EndsWith('/')) baseUrl += "/";
-
-            foreach (var testMessage in testMessages)
+            return Task.Run(() =>
             {
-                string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
-                var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
-                string queryResponse = "";
-                var ret = client.Post(ref queryResponse, "");
-                if (ret is null) continue;
-
-                var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
-                if (queryJson is null) continue;
-                queryJson.VolumeScale = Settings.Default.Volume;
-                queryJson.SpeedScale = 1.0;
-                queryResponse = JsonConvert.SerializeObject(queryJson);
-
-                if (ret.StatusCode.Equals(HttpStatusCode.OK))
+                string testMessage = "テストです";
+                string baseUrl = Settings.Default.VoiceVoxAddress;
+                if (string.IsNullOrEmpty(baseUrl))
                 {
-                    url = baseUrl + $"synthesis?speaker={styleId}";
-                    client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                    baseUrl = "http://127.0.0.1:50021";
+                }
+                if (baseUrl.Substring(baseUrl.Length - 1, 1) != "/")
+                {
+                    baseUrl += "/";
+                }
 
-                    string wavFile = Path.Combine(Path.GetTempPath(), $"chat_warmup_{Guid.NewGuid()}.wav");
-                    ret = client.Post(ref queryResponse, wavFile);
+                foreach (int styleId in RandTable)
+                {
+                    Debug.WriteLine("WarmUp Start: " + styleId.ToString());
+                    string url = baseUrl + $"audio_query?text='{testMessage}'&speaker={styleId}";
+                    var client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+                    string queryResponse = "";
+                    var ret = client.Post(ref queryResponse, "");
+                    if (ret is null) continue;
+
+                    var queryJson = JsonConvert.DeserializeObject<AccentPhrasesRoot>(queryResponse.ToString());
+                    if (queryJson is null) continue;
+                    queryJson.VolumeScale = Settings.Default.Volume;
+                    queryJson.SpeedScale = 1.0;
+                    queryResponse = JsonConvert.SerializeObject(queryJson);
+
                     if (ret.StatusCode.Equals(HttpStatusCode.OK))
                     {
-                        // デバッグ時のみ再生（awaitで非同期に）
-                        await PlayWavAsync(wavFile);
+                        url = baseUrl + $"synthesis?speaker={styleId}";
+                        client = new ServiceHttpClient(url, ServiceHttpClient.RequestType.none);
+
+                        string wavFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".wav");
+                        ret = client.Post(ref queryResponse, wavFile);
+                        if (ret.StatusCode.Equals(HttpStatusCode.OK))
+                        {
+                            try
+                            {
+                                Debug.WriteLine("WarmUp: " + styleId.ToString());
+                                if (File.Exists(wavFile))
+                                {
+                                    File.Delete(wavFile);
+                                }
+                            }
+                            catch
+                            {
+                                // 削除失敗時は無視
+                            }
+                        }
                     }
                 }
-            }
+            });
         }
 
         private static async Task SpeechMessageAsync(string UserName, string Message)
@@ -957,7 +975,7 @@ namespace SyncRoomChatToolV2
                                             item.MemberName = tempNameText.Current.Name;
                                         }
                                     }
-                                    catch (ElementNotAvailableException e)
+                                    catch (ElementNotAvailableException)
                                     {
                                         // 要素が無効化されている場合の処理
                                         new ToastContentBuilder()

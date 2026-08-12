@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local GitHub PAT for SyncRoomChatToolV2 AI (never commit real tokens)
+github_pat.txt
+**/github_pat.txt
+!**/github_pat.txt.example
+

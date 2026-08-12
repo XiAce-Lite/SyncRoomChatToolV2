@@ -1,5 +1,7 @@
 ﻿using Microsoft.Win32;
+using SyncRoomChatToolV2.Ai;
 using SyncRoomChatToolV2.Properties;
+using System.Diagnostics;
 using System.Windows;
 
 namespace SyncRoomChatToolV2.View
@@ -21,6 +23,7 @@ namespace SyncRoomChatToolV2.View
             Settings.Default.LinkWaveFilePath = LinkWaveFilePath.Text;
             Settings.Default.VoiceVoxPath = VoiceVoxPath.Text;
             Settings.Default.VoiceVoxAddress = VoiceVoxAddress.Text;
+            Settings.Default.GeminiApiKey = GeminiApiKey.Text;
             Settings.Default.Save();
         }
 
@@ -66,6 +69,23 @@ namespace SyncRoomChatToolV2.View
                 VoiceVoxPath.Text = ofd.FileName;
                 Settings.Default.VoiceVoxPath = VoiceVoxPath.Text;
                 Settings.Default.Save();
+            }
+        }
+
+        private void OpenAiPromptFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                new AiPromptStore().EnsureUserFiles();
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = AppContext.BaseDirectory,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "フォルダを開けません", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }

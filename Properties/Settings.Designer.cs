@@ -214,5 +214,17 @@ namespace SyncRoomChatToolV2.Properties {
                 this["SpeechWhenInvited"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string GeminiApiKey {
+            get {
+                return ((string)(this["GeminiApiKey"]));
+            }
+            set {
+                this["GeminiApiKey"] = value;
+            }
+        }
     }
 }

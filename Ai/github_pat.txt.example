@@ -1,0 +1,5 @@
+# SyncRoomChatToolV2 — optional GitHub Personal Access Token
+# Owner for repo knowledge is always XiAce-Lite (fixed in app).
+# Copy this file next to SyncRoomChatToolV2.exe as github_pat.txt and paste your PAT.
+# Lines starting with # are ignored.
+

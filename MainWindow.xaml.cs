@@ -1078,7 +1078,7 @@ namespace SyncRoomChatToolV2
                 //非常にダサいがメインループの外で一回チャットの最終行を取得し、oldMessageにぶっ込む。
                 AutomationElement chatList1 = chat.FindFirst(TreeScope.Element | TreeScope.Descendants,
                                                                     new PropertyCondition(AutomationElement.AutomationIdProperty, "chatList"));
-                if (chatList1 is null || !TryReadLastChatRow(chatList1, twDivision, twName, twTime, twMessage, twControl, out _, out _, out oldMessage))
+                if (chatList1 is null || !TryReadLastChatRow(chatList1, twDivision, twName, twTime, twMessage, twControl, out _, out _, out oldMessage, out _))
                 {
                     oldMessage = "";
                     firstFlg = true;
@@ -1240,7 +1240,7 @@ namespace SyncRoomChatToolV2
 
                         msg = "チャット入力待ち";
                         if (!TryReadLastChatRow(chatList, twDivision, twName, twTime, twMessage, twControl,
-                                out string rowUserName, out string rowTime, out string capturedMessage))
+                                out string rowUserName, out string rowTime, out string capturedMessage, out string uiaHttpUrl))
                         {
                             continue;
                         }
@@ -1265,7 +1265,7 @@ namespace SyncRoomChatToolV2
                             //リンク自動オープン時の処理。
                             bool IsLink = false;
                             string url = "";
-                            string extractedUrl = ExtractHttpUrl(Message);
+                            string extractedUrl = ResolveHttpUrl(uiaHttpUrl, Message);
                             if (!string.IsNullOrEmpty(extractedUrl))
                             {
                                 IsLink = true;
@@ -1322,7 +1322,11 @@ namespace SyncRoomChatToolV2
                             // 表示用にリンク情報を全文から再判定
                             if (!IsLink)
                             {
-                                extractedUrl = ExtractHttpUrl(displayMessage);
+                                extractedUrl = ResolveHttpUrl(uiaHttpUrl, displayMessage);
+                                if (string.IsNullOrEmpty(extractedUrl) && humanEchoFull is not null)
+                                {
+                                    extractedUrl = ExtractHttpUrl(humanEchoFull);
+                                }
                                 if (!string.IsNullOrEmpty(extractedUrl))
                                 {
                                     IsLink = true;
@@ -1488,11 +1492,13 @@ namespace SyncRoomChatToolV2
             TreeWalker twControl,
             out string userName,
             out string chatTime,
-            out string message)
+            out string message,
+            out string httpUrlFromUia)
         {
             userName = "";
             chatTime = "";
             message = "";
+            httpUrlFromUia = "";
             if (chatList is null) { return false; }
 
             try
@@ -1533,6 +1539,7 @@ namespace SyncRoomChatToolV2
                 }
 
                 message = ReadChatMessageText(elMessage);
+                httpUrlFromUia = TryReadHttpUrlFromMessageElement(elMessage) ?? "";
                 return !string.IsNullOrEmpty(message);
             }
             catch
@@ -1801,20 +1808,196 @@ namespace SyncRoomChatToolV2
         }
 
         /// <summary>
-        /// チャット本文から先頭の http(s) URL を抜き出す。無ければ空文字。
+        /// UIA の Hyperlink 等から href 相当を優先取得。取れなければ本文パースへ。
+        /// </summary>
+        private static string ResolveHttpUrl(string? uiaUrl, string text)
+        {
+            if (!string.IsNullOrWhiteSpace(uiaUrl) && TryNormalizeHttpUri(uiaUrl, out string normalized))
+            {
+                return normalized;
+            }
+            return ExtractHttpUrl(text);
+        }
+
+        /// <summary>
+        /// message 配下の Hyperlink から http(s) URL を探す。見つかれば正規化済み文字列。
+        /// </summary>
+        private static string? TryReadHttpUrlFromMessageElement(AutomationElement messageElement)
+        {
+            if (messageElement is null) { return null; }
+
+            var candidates = new List<string>();
+            CollectHttpUrlCandidatesFromUia(messageElement, candidates, 0);
+            return PickBestUiaHttpUrl(candidates);
+        }
+
+        private static void CollectHttpUrlCandidatesFromUia(AutomationElement node, List<string> candidates, int depth)
+        {
+            if (node is null || depth > 12) { return; }
+
+            try
+            {
+                if (node.Current.ControlType == ControlType.Hyperlink)
+                {
+                    string? href = TryGetHyperlinkUrlFromElement(node);
+                    if (!string.IsNullOrEmpty(href))
+                    {
+                        candidates.Add(href);
+                    }
+                }
+                else
+                {
+                    string? name = node.Current.Name;
+                    if (!string.IsNullOrWhiteSpace(name) && httpReg().IsMatch(name))
+                    {
+                        string extracted = ExtractHttpUrl(name);
+                        if (!string.IsNullOrEmpty(extracted))
+                        {
+                            candidates.Add(extracted);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignore single node
+            }
+
+            var walker = TreeWalker.ControlViewWalker;
+            AutomationElement? child;
+            try
+            {
+                child = walker.GetFirstChild(node);
+            }
+            catch
+            {
+                return;
+            }
+
+            for (AutomationElement? c = child; c is not null; c = walker.GetNextSibling(c))
+            {
+                CollectHttpUrlCandidatesFromUia(c, candidates, depth + 1);
+            }
+        }
+
+        private static string? TryGetHyperlinkUrlFromElement(AutomationElement link)
+        {
+            try
+            {
+                string? name = link.Current.Name;
+                if (TryExtractHttpUrlCandidate(name, out string? fromName))
+                {
+                    return fromName;
+                }
+            }
+            catch { /* ignore */ }
+
+            try
+            {
+                if (link.TryGetCurrentPattern(ValuePattern.Pattern, out object vpObj)
+                    && vpObj is ValuePattern vp
+                    && TryExtractHttpUrlCandidate(vp.Current.Value, out string? fromValue))
+                {
+                    return fromValue;
+                }
+            }
+            catch { /* ignore */ }
+
+            return null;
+        }
+
+        private static bool TryExtractHttpUrlCandidate(string? text, out string? url)
+        {
+            url = null;
+            if (string.IsNullOrWhiteSpace(text)) { return false; }
+
+            string trimmed = text.Trim();
+            if (TryNormalizeHttpUri(trimmed, out string normalized))
+            {
+                url = normalized;
+                return true;
+            }
+
+            string extracted = ExtractHttpUrl(trimmed);
+            if (!string.IsNullOrEmpty(extracted))
+            {
+                url = extracted;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string? PickBestUiaHttpUrl(IReadOnlyList<string> candidates)
+        {
+            string? best = null;
+            int bestScore = -1;
+
+            foreach (string candidate in candidates)
+            {
+                if (!TryNormalizeHttpUri(candidate, out string normalized)) { continue; }
+
+                int score = normalized.Length;
+                if (normalized.Contains('%', StringComparison.Ordinal))
+                {
+                    score += 1000;
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = normalized;
+                }
+            }
+
+            return best;
+        }
+
+        private static bool TryNormalizeHttpUri(string candidate, out string normalized)
+        {
+            normalized = "";
+            if (string.IsNullOrWhiteSpace(candidate)) { return false; }
+
+            candidate = candidate.Trim();
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uri)) { return false; }
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) { return false; }
+
+            normalized = uri.AbsoluteUri;
+            return true;
+        }
+
+        /// <summary>
+        /// チャット本文から先頭の http(s) URL を抜き出す。空白までを走査し Uri として成立する最長一致を採用。
         /// </summary>
         private static string ExtractHttpUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) { return ""; }
             var match = httpReg().Match(text);
             if (!match.Success) { return ""; }
-            string uriString = text[match.Index..];
-            int sp = uriString.IndexOfAny([' ', '　', '\n', '\r', '。']);
-            if (sp > 0)
+
+            int start = match.Index;
+            int hardEnd = text.Length;
+            for (int i = start; i < text.Length; i++)
             {
-                uriString = uriString[..sp];
+                if (char.IsWhiteSpace(text[i]))
+                {
+                    hardEnd = i;
+                    break;
+                }
             }
-            return uriString.Trim();
+
+            string best = "";
+            int minEnd = Math.Min(hardEnd, start + 8);
+            for (int end = minEnd; end <= hardEnd; end++)
+            {
+                string candidate = text[start..end];
+                if (TryNormalizeHttpUri(candidate, out string normalized))
+                {
+                    best = normalized;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>
